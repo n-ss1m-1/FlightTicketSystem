@@ -32,8 +32,8 @@ qrc_*.cpp
 Thumbs.db
 *.res
 *.rc
-/.qmake.cache
-/.qmake.stash
+*/.qmake.cache
+*/.qmake.stash
 
 # qtcreator generated files
 *.pro.user*
@@ -74,9 +74,9 @@ CMakeLists.txt.user*
 *.exe
 
 # Directories with generated files
-/.moc/
-/.obj/
-/.pch/
-/.rcc/
-/.uic/
-//build*/
+*/.moc/
+*/.obj/
+*/.pch/
+*/.rcc/
+*/.uic/
+*/build*/
