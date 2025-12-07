@@ -1,11 +1,14 @@
-#include "mainwindow.h"
-
-#include <QApplication>
+#include <QCoreApplication>
+#include "FlightServer.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+    QCoreApplication a(argc, argv);
+
+    FlightServer server;
+    if (!server.start(12345)) {
+        return -1;
+    }
+
     return a.exec();
 }
