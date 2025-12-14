@@ -7,33 +7,29 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QIntValidator>
-#include <QJsonObject>
 #include <QMessageBox>
+#include <QJsonObject>
+
+#include "Common/Protocol.h"
+
+static const char* SERVER_HOST = "127.0.0.1";
+static const quint16 SERVER_PORT = 12345;
 
 LoginWindow::LoginWindow(QWidget *parent)
     : QWidget(parent)
 {
     setupUi();
 
-    // 连接 NetworkManager 的信号
     auto net = NetworkManager::instance();
-    connect(net, &NetworkManager::connected,
-            this, &LoginWindow::onConnected);
-    connect(net, &NetworkManager::disconnected,
-            this, &LoginWindow::onDisconnected);
-    connect(net, &NetworkManager::jsonReceived,
-            this, &LoginWindow::onJsonReceived);
-    connect(net, &NetworkManager::errorOccurred,
-            this, &LoginWindow::onError);
+    connect(net, &NetworkManager::connected, this, &LoginWindow::onConnected);
+    connect(net, &NetworkManager::disconnected, this, &LoginWindow::onDisconnected);
+    connect(net, &NetworkManager::jsonReceived, this, &LoginWindow::onJsonReceived);
+    connect(net, &NetworkManager::errorOccurred, this, &LoginWindow::onError);
 }
 
 void LoginWindow::setupUi()
 {
     setWindowTitle("Flight Client - Login");
-
-    m_editHost = new QLineEdit("127.0.0.1");
-    m_editPort = new QLineEdit("12345");
-    m_editPort->setValidator(new QIntValidator(1, 65535, this));
 
     m_editUser = new QLineEdit;
     m_editPass = new QLineEdit;
@@ -44,14 +40,6 @@ void LoginWindow::setupUi()
 
     auto layout = new QVBoxLayout(this);
 
-    auto rowHost = new QHBoxLayout;
-    rowHost->addWidget(new QLabel("服务器IP:"));
-    rowHost->addWidget(m_editHost);
-
-    auto rowPort = new QHBoxLayout;
-    rowPort->addWidget(new QLabel("端口:"));
-    rowPort->addWidget(m_editPort);
-
     auto rowUser = new QHBoxLayout;
     rowUser->addWidget(new QLabel("用户名:"));
     rowUser->addWidget(m_editUser);
@@ -60,8 +48,6 @@ void LoginWindow::setupUi()
     rowPass->addWidget(new QLabel("密码:"));
     rowPass->addWidget(m_editPass);
 
-    layout->addLayout(rowHost);
-    layout->addLayout(rowPort);
     layout->addLayout(rowUser);
     layout->addLayout(rowPass);
     layout->addWidget(m_btnLogin);
@@ -75,10 +61,8 @@ void LoginWindow::onLoginClicked()
 {
     auto net = NetworkManager::instance();
     if (!net->isConnected()) {
-        QString host = m_editHost->text();
-        quint16 port = m_editPort->text().toUShort();
         m_labelStatus->setText("正在连接...");
-        net->connectToServer(host, port);
+        net->connectToServer(SERVER_HOST, SERVER_PORT);
     } else {
         sendLoginRequest();
     }
@@ -97,13 +81,15 @@ void LoginWindow::onDisconnected()
 
 void LoginWindow::onJsonReceived(const QJsonObject &obj)
 {
-    QString type = obj.value("type").toString();
-    if (type == "login_response") {
-        bool success = obj.value("success").toBool();
-        QString msg = obj.value("message").toString();
+    const QString type = obj.value(Protocol::KEY_TYPE).toString();
+
+    if (type == Protocol::TYPE_LOGIN_RESP) {
+        const bool success = obj.value(Protocol::KEY_SUCCESS).toBool();
+        const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
         if (success) {
             QMessageBox::information(this, "登录结果", "登录成功：" + msg);
-            // 这里未来可以打开主界面 MainWindow
+            // TODO: 打开主界面 MainWindow
         } else {
             QMessageBox::warning(this, "登录结果", "登录失败：" + msg);
         }
@@ -117,16 +103,18 @@ void LoginWindow::onError(const QString &msg)
 
 void LoginWindow::sendLoginRequest()
 {
-    QString user = m_editUser->text();
-    QString pass = m_editPass->text();
+    const QString user = m_editUser->text();
+    const QString pass = m_editPass->text();
 
     QJsonObject data{
         {"username", user},
         {"password", pass}
     };
-    QJsonObject obj{
-        {"type", "login"},
-        {"data", data}
+
+    QJsonObject req{
+        {Protocol::KEY_TYPE, Protocol::TYPE_LOGIN},
+        {Protocol::KEY_DATA, data}
     };
-    NetworkManager::instance()->sendJson(obj);
+
+    NetworkManager::instance()->sendJson(req);
 }

@@ -1,9 +1,6 @@
 #ifndef NETWORKMANAGER_H
 #define NETWORKMANAGER_H
 
-#endif // NETWORKMANAGER_H
-#pragma once
-
 #include <QObject>
 #include <QTcpSocket>
 #include <QJsonObject>
@@ -29,7 +26,7 @@ private slots:
     void onReadyRead();
     void onConnected();
     void onDisconnected();
-    void onError(QAbstractSocket::SocketError socketError);
+    void onError(QAbstractSocket::SocketError);
 
 private:
     explicit NetworkManager(QObject *parent = nullptr);
@@ -39,3 +36,5 @@ private:
     QTcpSocket m_socket;
     QByteArray m_buffer;
 };
+
+#endif // NETWORKMANAGER_H

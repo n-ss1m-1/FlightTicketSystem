@@ -11,12 +11,9 @@ NetworkManager* NetworkManager::instance()
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent)
 {
-    connect(&m_socket, &QTcpSocket::readyRead,
-            this, &NetworkManager::onReadyRead);
-    connect(&m_socket, &QTcpSocket::connected,
-            this, &NetworkManager::onConnected);
-    connect(&m_socket, &QTcpSocket::disconnected,
-            this, &NetworkManager::onDisconnected);
+    connect(&m_socket, &QTcpSocket::readyRead, this, &NetworkManager::onReadyRead);
+    connect(&m_socket, &QTcpSocket::connected, this, &NetworkManager::onConnected);
+    connect(&m_socket, &QTcpSocket::disconnected, this, &NetworkManager::onDisconnected);
     connect(&m_socket,
             QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::errorOccurred),
             this, &NetworkManager::onError);
@@ -41,7 +38,7 @@ void NetworkManager::sendJson(const QJsonObject &obj)
     }
     QJsonDocument doc(obj);
     QByteArray data = doc.toJson(QJsonDocument::Compact);
-    data.append('\n');
+    data.append('\n'); // 每条消息以 \n 结尾
     m_socket.write(data);
 }
 
@@ -70,17 +67,6 @@ void NetworkManager::processBuffer()
     }
 }
 
-void NetworkManager::onConnected()
-{
-    emit connected();
-}
-
-void NetworkManager::onDisconnected()
-{
-    emit disconnected();
-}
-
-void NetworkManager::onError(QAbstractSocket::SocketError)
-{
-    emit errorOccurred(m_socket.errorString());
-}
+void NetworkManager::onConnected() { emit connected(); }
+void NetworkManager::onDisconnected() { emit disconnected(); }
+void NetworkManager::onError(QAbstractSocket::SocketError) { emit errorOccurred(m_socket.errorString()); }

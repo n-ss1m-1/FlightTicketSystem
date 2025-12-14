@@ -1,9 +1,6 @@
 #ifndef LOGINWINDOW_H
 #define LOGINWINDOW_H
 
-#endif // LOGINWINDOW_H
-#pragma once
-
 #include <QWidget>
 #include <QJsonObject>
 
@@ -29,10 +26,11 @@ private:
     void sendLoginRequest();
 
 private:
-    QLineEdit *m_editHost;
-    QLineEdit *m_editPort;
-    QLineEdit *m_editUser;
-    QLineEdit *m_editPass;
-    QPushButton *m_btnLogin;
-    QLabel *m_labelStatus;
+    QLineEdit *m_editUser = nullptr;
+    QLineEdit *m_editPass = nullptr;
+    QPushButton *m_btnLogin = nullptr;
+    QLabel *m_labelStatus = nullptr;
 };
+
+#endif // LOGINWINDOW_H
+

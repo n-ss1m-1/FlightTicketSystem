@@ -3,14 +3,14 @@
 #include <QJsonParseError>
 #include <QDebug>
 
+#include "Common/Protocol.h"
+
 ClientHandler::ClientHandler(QTcpSocket *socket, QObject *parent)
     : QObject(parent)
     , m_socket(socket)
 {
-    connect(m_socket, &QTcpSocket::readyRead,
-            this, &ClientHandler::onReadyRead);
-    connect(m_socket, &QTcpSocket::disconnected,
-            this, &ClientHandler::onDisconnected);
+    connect(m_socket, &QTcpSocket::readyRead, this, &ClientHandler::onReadyRead);
+    connect(m_socket, &QTcpSocket::disconnected, this, &ClientHandler::onDisconnected);
 }
 
 void ClientHandler::onReadyRead()
@@ -40,31 +40,29 @@ void ClientHandler::processBuffer()
 
 void ClientHandler::handleJson(const QJsonObject &obj)
 {
-    QString type = obj.value("type").toString();
-    QJsonObject data = obj.value("data").toObject();
+    const QString type = obj.value(Protocol::KEY_TYPE).toString();
+    const QJsonObject data = obj.value(Protocol::KEY_DATA).toObject();
 
-    if (type == "login") {
-        QString username = data.value("username").toString();
-        QString password = data.value("password").toString();
+    if (type == Protocol::TYPE_LOGIN) {
+        const QString username = data.value("username").toString();
+        const QString password = data.value("password").toString();
 
-        qInfo() << "Login request from user:" << username
-                << "password:" << password;
+        qInfo() << "Login request:" << username << password;
 
-        // 目前不接数据库，直接返回“成功”
-        QJsonObject resp{
-            {"type", "login_response"},
-            {"success", true},
-            {"message", "服务器已收到登录请求（未接数据库）"}
-        };
-        sendJson(resp);
-    } else {
-        // 其他类型暂不支持
-        QJsonObject resp{
-            {"type", "error"},
-            {"message", "Unknown request type: " + type}
-        };
-        sendJson(resp);
+        // Demo：暂不接数据库，直接成功
+        sendJson(Protocol::makeOkResponse(
+            Protocol::TYPE_LOGIN_RESP,
+            QJsonObject(),  // data 为空
+            "服务器已收到登录请求（未接数据库）"
+            ));
+        return;
     }
+
+    // 未知请求
+    sendJson(Protocol::makeFailResponse(
+        Protocol::TYPE_ERROR,
+        "Unknown request type: " + type
+        ));
 }
 
 void ClientHandler::sendJson(const QJsonObject &obj)

@@ -1,9 +1,6 @@
 #ifndef CLIENTHANDLER_H
 #define CLIENTHANDLER_H
 
-#endif // CLIENTHANDLER_H
-#pragma once
-
 #include <QObject>
 #include <QTcpSocket>
 #include <QJsonObject>
@@ -24,6 +21,8 @@ private:
     void sendJson(const QJsonObject &obj);
 
 private:
-    QTcpSocket *m_socket;
+    QTcpSocket *m_socket = nullptr;
     QByteArray m_buffer;
 };
+
+#endif // CLIENTHANDLER_H
