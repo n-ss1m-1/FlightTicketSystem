@@ -85,6 +85,7 @@ struct FlightInfo {
 struct UserInfo {
     qint64 id = 0;                 // 用户ID（数据库主键）
     QString username;              // 登录用户名
+    QString password;              // 登陆密码
     QString phone;                 // 手机号
     QString realName;              // 真实姓名
     QString idCard;                // 身份证号
