@@ -1,4 +1,4 @@
-QT       += core gui widgets network
+QT       += core gui widgets network sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -10,14 +10,29 @@ CONFIG += c++17
 
 SOURCES += \
     LoginWindow.cpp \
+    MainWindow.cpp \
     NetworkManager.cpp \
-    main.cpp
+    main.cpp \
+    pages/FlightsPage.cpp \
+    pages/HomePage.cpp \
+    pages/OrdersPage.cpp \
+    pages/ProfilePage.cpp
 
 HEADERS += \
     LoginWindow.h \
-    NetworkManager.h
+    MainWindow.h \
+    NetworkManager.h \
+    pages/FlightsPage.h \
+    pages/HomePage.h \
+    pages/OrdersPage.h \
+    pages/ProfilePage.h
 
-FORMS +=
+FORMS += \
+    MainWindow.ui \
+    pages/FlightsPage.ui \
+    pages/HomePage.ui \
+    pages/OrdersPage.ui \
+    pages/ProfilePage.ui
 
 INCLUDEPATH += $$PWD/..
 
