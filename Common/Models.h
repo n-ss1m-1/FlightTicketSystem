@@ -144,7 +144,6 @@ inline FlightInfo flightFromJson(const QJsonObject &o)
 inline QJsonArray flightsToJsonArray(const QList<FlightInfo> &list)
 {
     QJsonArray arr;
-    arr.reserve(list.size());
     for (const auto &f : list) arr.append(flightToJson(f));
     return arr;
 }
@@ -218,7 +217,6 @@ inline OrderInfo orderFromJson(const QJsonObject &o)
 inline QJsonArray ordersToJsonArray(const QList<OrderInfo> &list)
 {
     QJsonArray arr;
-    arr.reserve(list.size());
     for (const auto &o : list) arr.append(orderToJson(o));
     return arr;
 }

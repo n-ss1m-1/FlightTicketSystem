@@ -1,4 +1,4 @@
-QT       += core gui widgets network
+QT       += core gui widgets network sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -10,11 +10,13 @@ CONFIG += c++17
 
 SOURCES += \
     ClientHandler.cpp \
+    DBManager.cpp \
     FlightServer.cpp \
     main.cpp
 
 HEADERS += \
     ClientHandler.h \
+    DBManager.h \
     FlightServer.h
 
 FORMS +=
