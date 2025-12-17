@@ -23,11 +23,17 @@ enum class DBResult
 class DBManager
 {
 public:
-    //单例模式 避免频繁创建连接
-    static DBManager& instance();  //获取数据库连接对象db
+    /*
+     * 单例模式
+     * 避免资源浪费
+     * 保证连接状态一致
+     * 简化调用逻辑(统一使用instance获取该对象)
+    */
+    static DBManager& instance();  //获取数据库连接对象
     DBManager(const DBManager&)=delete;
     DBManager& operator=(const DBManager&)=delete;
 
+    //errMsg作为传出参数：给 调用者/用户 提示信息
     //连接数据库
     bool connect(const QString& host,int port,const QString& user,const QString& passwd,const QString& dbName,QString* errMsg=nullptr);
 
