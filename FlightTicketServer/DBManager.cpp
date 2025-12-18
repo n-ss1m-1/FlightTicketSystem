@@ -55,8 +55,6 @@ bool DBManager::isConnected() const
 //查询操作
 QSqlQuery DBManager::Query(const QString& sql,const QList<QVariant>& params,QString* errMsg)
 {
-
-
     if(!isConnected())
     {
         if(errMsg) *errMsg="数据库未连接";
@@ -165,6 +163,7 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
     order.flightId=query.value("flight_id").toLongLong();
     order.passengerName=query.value("passenger_name").toString();
     order.passengerIdCard=query.value("passenger_id_card").toString();
+    order.seatNum=query.value("seat_num").toString();
     order.priceCents=query.value("price_cents").toInt();
     order.status=static_cast<Common::OrderStatus>(query.value("status").toInt());
 
@@ -174,7 +173,7 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
 
 //封装与业务相关的数据库操作
 //用户                    //user作为传出参数
-DBResult DBManager::getUserByUserName(const QString& username,Common::UserInfo& user,QString* errMsg)
+DBResult DBManager::getUserByUsername(const QString& username,Common::UserInfo& user,QString* errMsg)
 {
     //无参sql
     QString sql=QString("select * from user where username=?");
@@ -207,11 +206,39 @@ DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& user,QString* er
     user=userFromQuery(query);
     return DBResult::Success;
 }
+DBResult DBManager::addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg)
+{
+    QString sql="insert into user (username,password,phone,real_name,id_card) VALUES (?, ?, ?, ?, ?)";
+    QList<QVariant>params;
+    params<<username<<password<<phone<<real_name<<id_card;
+
+    int sqlAffected=update(sql,params,errMsg);
+    if(sqlAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"添加用户失败";
+        return DBResult::TransactionFailed;
+    }
+    return DBResult::Success;
+}
+DBResult DBManager::updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg)
+{
+    QString sql="update user set password=? WHERE username=?";
+    QList<QVariant> params;
+    params<< newPasswd<<username;
+
+    int sqlAffected=update(sql,params,errMsg);
+    if(sqlAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"密码更改失败";
+        return DBResult::TransactionFailed;
+    }
+    return DBResult::Success;
+}
 
 //航班                    //flights作为传出参数
-DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg)
+DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights,QString* errMsg)
 {
-    QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=?";    //此处使用sql函数 取出日期
+    QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? orders by depart_time asc";    //此处使用sql函数 取出日期
 
     QList<QVariant>params;          //转换为数据库date格式->匹配
     params<<fromCity<<toCity<<date.toString("yyyy-MM-dd")<<static_cast<int>(Common::FlightStatus::Normal);
@@ -243,7 +270,7 @@ DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QSt
 
 
 //订单                    //newOrderId作为传出参数
-DBResult DBManager::createOrder(const Common::OrderInfo& order,qint64& newOrderId,QString* errMsg)
+DBResult DBManager::createOrder(Common::OrderInfo& order,qint64& newOrderId,QString* errMsg)
 {
     //开启事务
     if(!beginTransaction())
@@ -270,10 +297,15 @@ DBResult DBManager::createOrder(const Common::OrderInfo& order,qint64& newOrderI
         return DBResult::QueryFailed;
     }
 
+    //更新订单座位
+    Common::FlightInfo flight;
+    getFlightById(order.flightId,flight,errMsg);
+    order.seatNum=QString::number(flight.seatTotal-flight.seatLeft+1);
+
     //2.插入订单数据
-    QString orderSql="insert into order (user_id,flight_id,passenger_name,passenger_id_card,price_cents,status) values(?,?,?,?,?,?)";
+    QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,status) values(?,?,?,?,?,?,?)";
     QList<QVariant>orderParams;
-    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.priceCents<<static_cast<int>(order.status);
+    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<static_cast<int>(order.status);
 
     QSqlQuery orderQuery=Query(orderSql,orderParams,errMsg);
     if(!orderQuery.isActive())
@@ -296,7 +328,7 @@ DBResult DBManager::createOrder(const Common::OrderInfo& order,qint64& newOrderI
 DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg)
 {
     //sql语句和参数
-    QString sql="select * from order where user_id=? order by id desc";
+    QString sql="select * from orders where user_id=? order by id desc";
     QList<QVariant>params;
     params<<userId;
 
@@ -326,7 +358,7 @@ DBResult DBManager::cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg)
     }
 
     //1.订单状态->取消
-    QString orderSql="update order set status=? where id=? and status!=?";
+    QString orderSql="update orders set status=? where id=? and status!=?";
     QList<QVariant>orderParams;
     orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Canceled);    //排除已消除的订单
 

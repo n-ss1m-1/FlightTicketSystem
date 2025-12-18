@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    ui->tabWidget->clear();
+    //ui->tabWidget->clear();
 }
 
 MainWindow::~MainWindow()

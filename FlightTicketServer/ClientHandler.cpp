@@ -57,7 +57,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         QString errorMsg;
 
         // 1. 调用队友写的查询函数
-        DBResult res = db.getUserByUserName(username, user, &errorMsg);
+        DBResult res = db.getUserByUsername(username, user, &errorMsg);
 
         // 2. 校验结果 (DBResult::Success 且 密码匹配)
         // 注意：这里假设数据库里存的是明文密码，实际开发通常要加密，但作业可以直接比对
@@ -82,24 +82,18 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         // 检查用户是否已存在
         Common::UserInfo existUser;
-        if (db.getUserByUserName(username, existUser) == DBResult::Success) {
+        if (db.getUserByUsername(username, existUser) == DBResult::Success) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在"));
             return;
         }
 
-        // 使用万能 update 函数执行插入 (因为队友没写 insertUser)
-        // 注意：这里的表名 'user' 和字段名必须和数据库一致，我参考了 DBManager.cpp 里的字段
-        QString sql = "INSERT INTO user (username, password, phone, id_card, real_name) VALUES (?, ?, ?, ?, ?)";
-        QList<QVariant> params;
-        params << username << password << phone << idCard << realName;
+        QString errMsg;
+        DBResult ret = db.addUser(username,password,phone,realName,idCard,&errMsg);
 
-        QString dbErr;
-        int ret = db.update(sql, params, &dbErr);
-
-        if (ret > 0) {
+        if (ret == DBResult::Success) {
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_REGISTER_RESP, QJsonObject(), "注册成功"));
         } else {
-            qCritical() << "Register DB Error:" << dbErr;
+            qCritical() << "Register DB Error:" << errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败，数据库错误"));
         }
         return;
@@ -115,7 +109,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         // 1. 先验证旧密码
         Common::UserInfo user;
-        DBResult res = db.getUserByUserName(username, user);
+        DBResult res = db.getUserByUsername(username, user);
 
         if (res != DBResult::Success || user.password != oldPwd) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "原密码错误"));
@@ -123,11 +117,9 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
 
         // 2. 更新新密码
-        QString sql = "UPDATE user SET password=? WHERE username=?";
-        QList<QVariant> params;
-        params << newPwd << username;
-
-        if (db.update(sql, params) > 0) {
+        QString errMsg;
+        res=db.updatePasswdByUsername(username,newPwd,&errMsg);
+        if (res == DBResult::Success) {
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_CHANGE_PWD_RESP, QJsonObject(), "密码修改成功"));
         } else {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码修改失败"));

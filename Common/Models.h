@@ -102,6 +102,7 @@ struct OrderInfo {
     QString passengerName;
     QString passengerIdCard;
 
+    QString seatNum;               // 座位号
     qint32 priceCents = 0;         // 成交价格（分）
     OrderStatus status = OrderStatus::Booked; // 订单状态
     QDateTime createdTime;         // 下单时间
@@ -193,6 +194,7 @@ inline QJsonObject orderToJson(const OrderInfo &ord)
     putIfNotEmpty(o, "passengerName", ord.passengerName);
     putIfNotEmpty(o, "passengerIdCard", ord.passengerIdCard);
 
+    putIfNotEmpty(o, "seatNum", ord.seatNum);
     o.insert("priceCents", ord.priceCents);
     o.insert("status", static_cast<qint32>(ord.status));
     o.insert("createdTime", toIsoString(ord.createdTime));
@@ -209,6 +211,7 @@ inline OrderInfo orderFromJson(const QJsonObject &o)
     ord.passengerName = o.value("passengerName").toString();
     ord.passengerIdCard = o.value("passengerIdCard").toString();
 
+    ord.seatNum = o.value("seatNum").toString();
     ord.priceCents = o.value("priceCents").toInt();
     ord.status = static_cast<OrderStatus>(o.value("status").toInt());
     ord.createdTime = fromIsoString(o.value("createdTime").toString());
