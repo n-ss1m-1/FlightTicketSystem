@@ -9,22 +9,22 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    LoginWindow.cpp \
     MainWindow.cpp \
     NetworkManager.cpp \
     main.cpp \
     pages/FlightsPage/FlightsPage.cpp \
     pages/HomePage/HomePage.cpp \
     pages/OrdersPage/OrdersPage.cpp \
+    pages/ProfilePage/LoginDialog.cpp \
     pages/ProfilePage/ProfilePage.cpp
 
 HEADERS += \
-    LoginWindow.h \
     MainWindow.h \
     NetworkManager.h \
     pages/FlightsPage/FlightsPage.h \
     pages/HomePage/HomePage.h \
     pages/OrdersPage/OrdersPage.h \
+    pages/ProfilePage/LoginDialog.h \
     pages/ProfilePage/ProfilePage.h
 
 FORMS += \
@@ -32,6 +32,7 @@ FORMS += \
     pages/FlightsPage/FlightsPage.ui \
     pages/HomePage/HomePage.ui \
     pages/OrdersPage/OrdersPage.ui \
+    pages/ProfilePage/LoginDialog.ui \
     pages/ProfilePage/ProfilePage.ui
 
 INCLUDEPATH += $$PWD/..

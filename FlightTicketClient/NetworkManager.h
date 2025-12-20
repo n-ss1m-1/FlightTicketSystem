@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QJsonObject>
+#include "Common/Protocol.h"
 
 class NetworkManager : public QObject
 {
@@ -15,6 +16,9 @@ public:
     bool isConnected() const;
 
     void sendJson(const QJsonObject &obj);
+
+    void login(const QString& username, const QString& password); // 登录
+
 
 signals:
     void connected();

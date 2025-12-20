@@ -15,8 +15,16 @@ public:
     explicit ProfilePage(QWidget *parent = nullptr);
     ~ProfilePage();
 
+private slots:
+    void on_btnLogin_clicked();
+
 private:
     Ui::ProfilePage *ui;
+
+    bool m_loggedIn = false; // 登录状态
+    QString m_username; // 记录用户名
+
+    void updateLoginUI(); // 刷新按钮/界面
 };
 
 #endif // PROFILEPAGE_H

@@ -67,6 +67,19 @@ void NetworkManager::processBuffer()
     }
 }
 
+void NetworkManager::login(const QString &username, const QString &password)
+{
+    QJsonObject data;
+    data.insert("username", username);
+    data.insert("password", password);
+
+    QJsonObject req;
+    req.insert(Protocol::KEY_TYPE, Protocol::TYPE_LOGIN);
+    req.insert(Protocol::KEY_DATA, data);
+
+    sendJson(req);
+}
+
 void NetworkManager::onConnected() { emit connected(); }
 void NetworkManager::onDisconnected() { emit disconnected(); }
 void NetworkManager::onError(QAbstractSocket::SocketError) { emit errorOccurred(m_socket.errorString()); }
