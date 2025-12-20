@@ -13,26 +13,26 @@ SOURCES += \
     MainWindow.cpp \
     NetworkManager.cpp \
     main.cpp \
-    pages/FlightsPage.cpp \
-    pages/HomePage.cpp \
-    pages/OrdersPage.cpp \
-    pages/ProfilePage.cpp
+    pages/FlightsPage/FlightsPage.cpp \
+    pages/HomePage/HomePage.cpp \
+    pages/OrdersPage/OrdersPage.cpp \
+    pages/ProfilePage/ProfilePage.cpp
 
 HEADERS += \
     LoginWindow.h \
     MainWindow.h \
     NetworkManager.h \
-    pages/FlightsPage.h \
-    pages/HomePage.h \
-    pages/OrdersPage.h \
-    pages/ProfilePage.h
+    pages/FlightsPage/FlightsPage.h \
+    pages/HomePage/HomePage.h \
+    pages/OrdersPage/OrdersPage.h \
+    pages/ProfilePage/ProfilePage.h
 
 FORMS += \
     MainWindow.ui \
-    pages/FlightsPage.ui \
-    pages/HomePage.ui \
-    pages/OrdersPage.ui \
-    pages/ProfilePage.ui
+    pages/FlightsPage/FlightsPage.ui \
+    pages/HomePage/HomePage.ui \
+    pages/OrdersPage/OrdersPage.ui \
+    pages/ProfilePage/ProfilePage.ui
 
 INCLUDEPATH += $$PWD/..
 
