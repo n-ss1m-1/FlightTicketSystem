@@ -33,7 +33,7 @@ bool NetworkManager::isConnected() const
 void NetworkManager::sendJson(const QJsonObject &obj)
 {
     if (!isConnected()) {
-        qWarning() << "Not connected, cannot send";
+        qWarning() << "未连接，无法发送";
         return;
     }
     QJsonDocument doc(obj);
@@ -76,6 +76,37 @@ void NetworkManager::login(const QString &username, const QString &password)
     QJsonObject req;
     req.insert(Protocol::KEY_TYPE, Protocol::TYPE_LOGIN);
     req.insert(Protocol::KEY_DATA, data);
+
+    sendJson(req);
+}
+
+void NetworkManager::registerUser(const QString &username, const QString &password,
+                                  const QString &phone, const QString &realName, const QString &idCard)
+{
+    QJsonObject data;
+    data["username"] = username;
+    data["password"] = password;
+    data["phone"] = phone;
+    data["realName"] = realName;
+    data["idCard"] = idCard;
+
+    QJsonObject req;
+    req[Protocol::KEY_TYPE] = Protocol::TYPE_REGISTER;
+    req[Protocol::KEY_DATA] = data;
+
+    sendJson(req);
+}
+
+void NetworkManager::changePassword(const QString &username, const QString &oldPwd, const QString &newPwd)
+{
+    QJsonObject data;
+    data["username"] = username;
+    data["oldPassword"] = oldPwd;
+    data["newPassword"] = newPwd;
+
+    QJsonObject req;
+    req[Protocol::KEY_TYPE] = Protocol::TYPE_CHANGE_PWD;
+    req[Protocol::KEY_DATA] = data;
 
     sendJson(req);
 }

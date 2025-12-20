@@ -3,6 +3,8 @@
 #include "LoginDialog.h"
 #include <QMessageBox>
 #include "NetworkManager.h"
+#include "RegisterDialog.h"
+#include "ChangePwdDialog.h"
 
 ProfilePage::ProfilePage(QWidget *parent)
     : QWidget(parent)
@@ -17,8 +19,22 @@ ProfilePage::~ProfilePage()
     delete ui;
 }
 
+void ProfilePage::updateLoginUI() // 更新按钮文本
+{
+    if (m_loggedIn) {
+        ui->btnLogin->setText("退出登录");
+        ui->lblStatus->setText("已登录：" + m_username);
+        ui->btnRegister->setText("修改密码");
+    } else {
+        ui->btnLogin->setText("登录");
+        ui->lblStatus->setText("未登录");
+        ui->btnRegister->setText("注册");
+    }
+}
+
 void ProfilePage::on_btnLogin_clicked()
 {
+    // 已登录：退出登录
     if (m_loggedIn) {
         QMessageBox box(this);
         box.setWindowTitle("确认退出");
@@ -85,14 +101,83 @@ void ProfilePage::on_btnLogin_clicked()
     dlg->exec();
 }
 
-void ProfilePage::updateLoginUI()
+void ProfilePage::on_btnRegister_clicked()
 {
-    if (m_loggedIn) {
-        ui->btnLogin->setText("退出登录");
-        ui->lblStatus->setText("已登录：" + m_username);
-    } else {
-        ui->btnLogin->setText("登录");
-        ui->lblStatus->setText("未登录");
+    // 未登录：注册
+    if (!m_loggedIn) {
+        auto *dlg = new RegisterDialog(this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+        connect(dlg, &RegisterDialog::registerSubmitted, this,
+                [dlg](const QString &u, const QString &p,
+                      const QString &phone, const QString &realName, const QString &idCard) {
+                    NetworkManager::instance()->registerUser(u, p, phone, realName, idCard);
+                });
+
+        connect(NetworkManager::instance(), &NetworkManager::jsonReceived, dlg,
+                [dlg](const QJsonObject &resp) {
+                    const QString type = resp.value(Protocol::KEY_TYPE).toString();
+
+                    if (type == Protocol::TYPE_REGISTER_RESP) {
+                        const bool success = resp.value(Protocol::KEY_SUCCESS).toBool();
+                        const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+
+                        if (success) {
+                            QMessageBox::information(dlg, "注册成功", msg.isEmpty() ? "注册成功" : msg);
+                            dlg->accept();
+                        } else {
+                            QMessageBox::warning(dlg, "注册失败", msg.isEmpty() ? "注册失败" : msg);
+                        }
+                        return;
+                    }
+
+                    if (type == Protocol::TYPE_ERROR) {
+                        const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+                        QMessageBox::warning(dlg, "注册失败", msg.isEmpty() ? "注册失败" : msg);
+                        return;
+                    }
+                });
+
+        dlg->exec();
+        return;
     }
+
+    // 已登录：修改密码
+    auto *dlg = new ChangePwdDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+    connect(dlg, &ChangePwdDialog::changePwdSubmitted, this,
+            [this](const QString &oldPwd, const QString &newPwd) {
+                NetworkManager::instance()->changePassword(m_username, oldPwd, newPwd);
+            });
+
+    connect(NetworkManager::instance(), &NetworkManager::jsonReceived, dlg,
+            [dlg](const QJsonObject &resp) {
+                const QString type = resp.value(Protocol::KEY_TYPE).toString();
+
+                if (type == Protocol::TYPE_CHANGE_PWD_RESP) {
+                    const bool success = resp.value(Protocol::KEY_SUCCESS).toBool();
+                    const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+
+                    if (success) {
+                        QMessageBox::information(dlg, "修改成功", msg.isEmpty() ? "密码修改成功" : msg);
+                        dlg->accept();
+                    } else {
+                        QMessageBox::warning(dlg, "修改失败", msg.isEmpty() ? "密码修改失败" : msg);
+                    }
+                    return;
+                }
+
+                if (type == Protocol::TYPE_ERROR) {
+                    const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+                    QMessageBox::warning(dlg, "修改失败", msg.isEmpty() ? "修改失败" : msg);
+                    return;
+                }
+            });
+
+    dlg->exec();
 }
+
+
+
 

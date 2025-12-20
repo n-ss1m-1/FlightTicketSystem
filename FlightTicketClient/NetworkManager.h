@@ -18,7 +18,9 @@ public:
     void sendJson(const QJsonObject &obj);
 
     void login(const QString& username, const QString& password); // 登录
-
+    void registerUser(const QString& username, const QString& password,
+                      const QString& phone, const QString& realName, const QString& idCard); // 注册
+    void changePassword(const QString& username, const QString& oldPwd, const QString& newPwd); // 修改密码
 
 signals:
     void connected();

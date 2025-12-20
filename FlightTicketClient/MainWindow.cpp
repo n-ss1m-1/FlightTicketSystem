@@ -31,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto nm = NetworkManager::instance();
 
     connect(nm, &NetworkManager::connected, this, []{
-        qDebug() << "Server connected";
+        qDebug() << "服务器已连接";
     });
     connect(nm, &NetworkManager::disconnected, this, [this]{
         QMessageBox::warning(this, "网络断开", "与服务器连接已断开");
