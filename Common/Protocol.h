@@ -37,6 +37,14 @@ static const QString TYPE_ERROR = "error";
 static const QString TYPE_LOGIN      = "login";
 static const QString TYPE_LOGIN_RESP = "login_response";
 
+// ======================== 用户管理  ========================
+static const QString TYPE_REGISTER      = "register";
+static const QString TYPE_REGISTER_RESP = "register_response";
+static const QString TYPE_CHANGE_PWD    = "change_pwd";
+static const QString TYPE_CHANGE_PWD_RESP = "change_pwd_response";
+static const QString TYPE_UPDATE_INFO   = "update_info";
+static const QString TYPE_UPDATE_INFO_RESP = "update_info_response";
+
 // ======================== 航班 ========================
 
 static const QString TYPE_FLIGHT_SEARCH      = "flight_search";

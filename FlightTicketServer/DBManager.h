@@ -52,15 +52,17 @@ public:
 
     //封装与业务相关的数据库操作
     //用户                    //user作为传出参数
-    DBResult getUserByUserName(const QString& username,Common::UserInfo& user,QString* errMsg=nullptr);
+    DBResult getUserByUsername(const QString& username,Common::UserInfo& user,QString* errMsg=nullptr);
     DBResult getUserById(qint64 userId,Common::UserInfo& user,QString* errMsg=nullptr);
-
+    DBResult addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg);
+    DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg);
+    DBResult updateInfoByUserId(const QString& username,const QString& password,const QString& phone,QString* errMsg);  //未实现
     //航班                    //flights作为传出参数
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
 
     //订单                    //neworderId作为传出参数
-    DBResult createOrder(const Common::OrderInfo& order,qint64& newOrderId,QString* errMsg=nullptr);
+    DBResult createOrder(Common::OrderInfo& order,qint64& newOrderId,QString* errMsg=nullptr);
     DBResult getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);
     DBResult cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg=nullptr);       //flightId用于seat+1
 
