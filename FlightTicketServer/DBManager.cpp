@@ -31,11 +31,25 @@ bool DBManager::connect(const QString& host,int port,const QString& user,const Q
         db.close();
     }
 
-    db.setHostName(host);
-    db.setPort(port);
-    db.setDatabaseName(dbName);
-    db.setUserName(user);
-    db.setPassword(passwd);
+    // db.setHostName(host);
+    // db.setPort(port);
+    // db.setDatabaseName(dbName);
+    // db.setUserName(user);
+    // db.setPassword(passwd);
+
+    const QString driverName = "MySQL ODBC 8.0 Unicode Driver";
+
+    QString conn = QString(
+                       "Driver={%1};"
+                       "Server=%2;"
+                       "Port=%3;"
+                       "Database=%4;"
+                       "User=%5;"
+                       "Password=%6;"
+                       "Option=3;"
+                       ).arg(driverName, host, QString::number(port), dbName, user, passwd);
+
+    db.setDatabaseName(conn);
 
     bool status=db.open();
     if(!status && errMsg)
