@@ -37,27 +37,33 @@ bool DBManager::connect(const QString& host,int port,const QString& user,const Q
     // db.setUserName(user);
     // db.setPassword(passwd);
 
-    const QString driverName = "MySQL ODBC 8.0 Unicode Driver";
+    QStringList driverCandidates = {
+        "MySQL ODBC 8.0 Unicode Driver",
+        "MySQL ODBC 9.5 Unicode Driver"
+    };
 
-    QString conn = QString(
-                       "Driver={%1};"
-                       "Server=%2;"
-                       "Port=%3;"
-                       "Database=%4;"
-                       "User=%5;"
-                       "Password=%6;"
-                       "Option=3;"
-                       ).arg(driverName, host, QString::number(port), dbName, user, passwd);
+    bool ok = false;
+    QString lastErr;
 
-    db.setDatabaseName(conn);
+    for (const QString &drv : driverCandidates) {
+        QString conn = QString(
+                           "Driver={%1};"
+                           "Server=%2;"
+                           "Port=%3;"
+                           "Database=%4;"
+                           "User=%5;"
+                           "Password=%6;"
+                           "Option=3;"
+                           ).arg(drv, host, QString::number(port), dbName, user, passwd);
 
-    bool status=db.open();
-    if(!status && errMsg)
-    {
-        *errMsg=db.lastError().text();
+        db.setDatabaseName(conn);
+        ok = db.open();
+        if (ok) break;
+        lastErr = db.lastError().text();
     }
 
-    return status;
+    if (!ok && errMsg) *errMsg = lastErr;
+    return ok;
 }
 
 
