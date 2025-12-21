@@ -15,6 +15,11 @@ public:
     explicit HomePage(QWidget *parent = nullptr);
     ~HomePage();
 
+signals:
+    void requestGoFlights();
+    void requestGoOrders();
+    void requestGoProfile();
+
 private:
     Ui::HomePage *ui;
 };

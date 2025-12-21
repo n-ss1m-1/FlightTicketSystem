@@ -6,6 +6,8 @@
 #include "pages/ProfilePage/ProfilePage.h"
 #include "NetworkManager.h"
 #include <QMessageBox>
+#include <QVBoxLayout>
+#include <QDebug>
 
 static const char* kHost = "127.0.0.1";
 static const quint16 kPort = 12345;
@@ -23,21 +25,35 @@ MainWindow::MainWindow(QWidget *parent)
         tabContainer->layout()->addWidget(page);
     };
 
-    bindPage(ui->tabHome, new HomePage(this));
-    bindPage(ui->tabFlights, new FlightsPage(this));
-    bindPage(ui->tabOrders, new OrdersPage(this));
-    bindPage(ui->tabProfile, new ProfilePage(this));
+    HomePage* homePage = new HomePage(this);
+    FlightsPage* flightsPage = new FlightsPage(this);
+    OrdersPage* ordersPage = new OrdersPage(this);
+    ProfilePage* profilePage = new ProfilePage(this);
 
-    auto nm = NetworkManager::instance();
+    // 绑定到容器
+    bindPage(ui->tabHome, homePage);
+    bindPage(ui->tabFlights, flightsPage);
+    bindPage(ui->tabOrders, ordersPage);
+    bindPage(ui->tabProfile, profilePage);
 
-    connect(nm, &NetworkManager::connected, this, []{
-        qDebug() << "服务器已连接";
+    connect(homePage, &HomePage::requestGoFlights, [this](){
+        ui->tabWidget->setCurrentIndex(1);
     });
+
+    connect(homePage, &HomePage::requestGoOrders, [this, ordersPage](){
+        ordersPage->loadOrders();
+        ui->tabWidget->setCurrentIndex(2);
+    });
+
+    connect(homePage, &HomePage::requestGoProfile, [this](){
+        ui->tabWidget->setCurrentIndex(3);
+    });
+
+    // 网络
+    auto nm = NetworkManager::instance();
+    connect(nm, &NetworkManager::connected, this, []{ qDebug() << "服务器已连接"; });
     connect(nm, &NetworkManager::disconnected, this, [this]{
         QMessageBox::warning(this, "网络断开", "与服务器连接已断开");
-    });
-    connect(nm, &NetworkManager::errorOccurred, this, [this](const QString& err){
-        qDebug() << "Socket error:" << err;
     });
 
     nm->connectToServer(kHost, kPort);
