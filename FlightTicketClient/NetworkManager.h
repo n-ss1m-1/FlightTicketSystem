@@ -17,6 +17,9 @@ public:
 
     void sendJson(const QJsonObject &obj);
 
+    void setServer(const QString& host, quint16 port);
+    void reconnect(); // 重连
+
     void login(const QString& username, const QString& password); // 登录
     void registerUser(const QString& username, const QString& password,
                       const QString& phone, const QString& realName, const QString& idCard); // 注册
@@ -27,6 +30,8 @@ signals:
     void disconnected();
     void jsonReceived(const QJsonObject &obj);
     void errorOccurred(const QString &msg);
+    void notConnected(); // sendJson()未连接时触发弹窗
+    void reconnectRequested();
 
 private slots:
     void onReadyRead();
@@ -41,6 +46,9 @@ private:
 private:
     QTcpSocket m_socket;
     QByteArray m_buffer;
+
+    QString m_host;
+    quint16 m_port = 0;
 };
 
 #endif // NETWORKMANAGER_H
