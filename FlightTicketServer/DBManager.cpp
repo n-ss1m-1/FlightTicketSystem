@@ -244,12 +244,26 @@ DBResult DBManager::updatePasswdByUsername(const QString& username,const QString
 {
     QString sql="update user set password=? WHERE username=?";
     QList<QVariant> params;
-    params<< newPasswd<<username;
+    params<<newPasswd<<username;
 
     int sqlAffected=update(sql,params,errMsg);
     if(sqlAffected<=0)
     {
         if(errMsg) *errMsg=*errMsg+"密码更改失败";
+        return DBResult::TransactionFailed;
+    }
+    return DBResult::Success;
+}
+DBResult updatephoneByUsername(const QString& username,const QString& phone,QString* errMsg)
+{
+    QString sql="update user set phone=? where username=?";
+    QList<QVariant> params;
+    params<<phone<<username;
+
+    int sqlAffected=update(sql,params,errMsg);
+    if(sqlAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"电话号码更改失败";
         return DBResult::TransactionFailed;
     }
     return DBResult::Success;

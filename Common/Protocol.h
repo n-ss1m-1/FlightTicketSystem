@@ -42,6 +42,8 @@ static const QString TYPE_REGISTER      = "register";
 static const QString TYPE_REGISTER_RESP = "register_response";
 static const QString TYPE_CHANGE_PWD    = "change_pwd";
 static const QString TYPE_CHANGE_PWD_RESP = "change_pwd_response";
+static const QString TYPE_CHANGE_PHONE  ="change_phone";
+static const QString TYPE_CHANGE_PHONE_RESP = "change_phone_response";
 static const QString TYPE_UPDATE_INFO   = "update_info";
 static const QString TYPE_UPDATE_INFO_RESP = "update_info_response";
 

@@ -234,7 +234,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         return;
     }
-    //取消订单(根据userId和orderId)
+    //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)
     {
         const qint64 userId=data.value("userId").toVariant().toLongLong();
