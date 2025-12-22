@@ -236,7 +236,7 @@ DBResult DBManager::addUser(const QString& username,const QString& password,cons
     if(sqlAffected<=0)
     {
         if(errMsg) *errMsg=*errMsg+"添加用户失败";
-        return DBResult::TransactionFailed;
+        return DBResult::updateFailed;
     }
     return DBResult::Success;
 }
@@ -250,11 +250,11 @@ DBResult DBManager::updatePasswdByUsername(const QString& username,const QString
     if(sqlAffected<=0)
     {
         if(errMsg) *errMsg=*errMsg+"密码更改失败";
-        return DBResult::TransactionFailed;
+        return DBResult::updateFailed;
     }
     return DBResult::Success;
 }
-DBResult updatephoneByUsername(const QString& username,const QString& phone,QString* errMsg)
+DBResult DBManager::updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg)
 {
     QString sql="update user set phone=? where username=?";
     QList<QVariant> params;
@@ -264,7 +264,7 @@ DBResult updatephoneByUsername(const QString& username,const QString& phone,QStr
     if(sqlAffected<=0)
     {
         if(errMsg) *errMsg=*errMsg+"电话号码更改失败";
-        return DBResult::TransactionFailed;
+        return DBResult::updateFailed;
     }
     return DBResult::Success;
 }
@@ -272,7 +272,7 @@ DBResult updatephoneByUsername(const QString& username,const QString& phone,QStr
 //航班                    //flights作为传出参数
 DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights,QString* errMsg)
 {
-    QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? orders by depart_time asc";    //此处使用sql函数 取出日期
+    QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? order by depart_time asc";    //此处使用sql函数 取出日期
 
     QList<QVariant>params;          //转换为数据库date格式->匹配
     params<<fromCity<<toCity<<date.toString("yyyy-MM-dd")<<static_cast<int>(Common::FlightStatus::Normal);
