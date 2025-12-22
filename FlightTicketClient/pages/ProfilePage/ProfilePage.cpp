@@ -19,7 +19,7 @@ ProfilePage::~ProfilePage()
     delete ui;
 }
 
-void ProfilePage::updateLoginUI() // 更新按钮文本
+void ProfilePage::updateLoginUI()
 {
     if (m_loggedIn) {
         ui->btnLogin->setText("退出登录");
@@ -30,6 +30,54 @@ void ProfilePage::updateLoginUI() // 更新按钮文本
         ui->lblStatus->setText("未登录");
         ui->btnRegister->setText("注册");
     }
+}
+
+void ProfilePage::updateUserInfoUI()
+{
+    if (!m_loggedIn) {
+        ui->lblPhoneValue->setText("-");
+        ui->lblRealNameValue->setText("-");
+        ui->lblIdCardValue->setText("-");
+        ui->btnChangePhone->setEnabled(false);
+        return;
+    }
+
+    ui->btnChangePhone->setEnabled(true);
+
+    applyPrivacyMask();
+}
+
+QString ProfilePage::maskMiddle(const QString& s, int left, int right, QChar ch)
+{
+    if (s.isEmpty()) return "";
+    if (left + right >= s.size()) return QString(s.size(), ch);
+
+    QString out = s.left(left);
+    out += QString(s.size() - left - right, ch);
+    out += s.right(right);
+    return out;
+}
+
+void ProfilePage::applyPrivacyMask()
+{
+    const QString phone    = m_userJson.value("phone").toString();
+    const QString realName = m_userJson.value("realName").toString();
+    const QString idCard   = m_userJson.value("idCard").toString();
+
+    // 手机号：显示 3-4-4，其余*
+    ui->lblPhoneValue->setText(
+        ui->cbShowPhone->isChecked() ? phone : maskMiddle(phone, 3, 4)
+        );
+
+    // 真实姓名：显示最后一个字，其余*
+    ui->lblRealNameValue->setText(
+        ui->cbShowRealName->isChecked() ? realName : (realName.isEmpty() ? "" : maskMiddle(realName, 0, 1))
+        );
+
+    // 身份证：显示前4后4
+    ui->lblIdCardValue->setText(
+        ui->cbShowIdCard->isChecked() ? idCard : maskMiddle(idCard, 4, 4)
+        );
 }
 
 void ProfilePage::on_btnLogin_clicked()
@@ -51,6 +99,8 @@ void ProfilePage::on_btnLogin_clicked()
         if (box.clickedButton() == btnLogout) {
             m_loggedIn = false;
             m_username.clear();
+            m_userJson = QJsonObject();
+            updateUserInfoUI();
             updateLoginUI();
         }
         return;
@@ -80,7 +130,8 @@ void ProfilePage::on_btnLogin_clicked()
 
                         m_username = data.value("username").toString();
                         if (m_username.isEmpty()) m_username = data.value("realName").toString();
-
+                        m_userJson = data;
+                        updateUserInfoUI();
                         updateLoginUI();
                         dlg->accept();
                     } else {
@@ -180,4 +231,21 @@ void ProfilePage::on_btnRegister_clicked()
 
 
 
+
+
+void ProfilePage::on_cbShowPhone_toggled(bool)
+{
+    if (m_loggedIn) applyPrivacyMask();
+}
+
+
+void ProfilePage::on_cbShowRealName_toggled(bool)
+{
+    if (m_loggedIn) applyPrivacyMask();
+}
+
+void ProfilePage::on_cbShowIdCard_toggled(bool)
+{
+    if (m_loggedIn) applyPrivacyMask();
+}
 
