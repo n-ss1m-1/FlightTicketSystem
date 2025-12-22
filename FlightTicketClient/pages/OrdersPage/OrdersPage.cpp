@@ -1,64 +1,94 @@
 #include "OrdersPage.h"
 #include "ui_OrdersPage.h"
-#include <QSqlQuery>
-#include <QSqlError>
+#include "NetworkManager.h"
+#include "Common/Protocol.h"
+#include <QJsonArray>
 #include <QMessageBox>
+#include <QDebug>
 
-OrdersPage::OrdersPage(QWidget *parent) : QWidget(parent), ui(new Ui::OrdersPage) {
+OrdersPage::OrdersPage(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::OrdersPage)
+{
     ui->setupUi(this);
-    model = new QSqlQueryModel(this);
-    loadOrders();
+
+    // 初始化模型
+    model = new QStandardItemModel(this);
+    model->setHorizontalHeaderLabels({"订单ID", "航班ID", "乘客姓名", "状态", "下单时间"});
+    ui->tableOrders->setModel(model);
+    ui->tableOrders->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableOrders->horizontalHeader()->setStretchLastSection(true);
+
+    // 【重要】连接网络信号
+    connect(NetworkManager::instance(), &NetworkManager::jsonReceived,
+            this, &OrdersPage::onJsonReceived);
 }
 
-OrdersPage::~OrdersPage() { delete ui; }
+OrdersPage::~OrdersPage() {
+    delete ui;
+}
 
-// 显示订单详情
 void OrdersPage::loadOrders() {
-    // 从 orders 表查出订单，从 flights 表查出对应的航班号和路线
-    QString sql = "SELECT o.order_id AS '订单号', f.flight_no AS '航班号', "
-                  "f.departure AS '出发地', f.destination AS '目的地', "
-                  "o.order_time AS '下单时间', o.status AS '状态' "
-                  "FROM orders o JOIN flights f ON o.flight_id = f.id";
+    QJsonObject data;
+    data.insert("userId", 1); // 临时固定ID，待登录功能完善后修改
 
-    model->setQuery(sql);
-    ui->tableOrders->setModel(model);
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_LIST);
+    root.insert(Protocol::KEY_DATA, data);
 
-
-    ui->tableOrders->setSelectionBehavior(QAbstractItemView::SelectRows);
-    ui->tableOrders->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tableOrders->horizontalHeader()->setStretchLastSection(true);
+    NetworkManager::instance()->sendJson(root);
 }
 
 void OrdersPage::on_btnRefresh_clicked() {
     loadOrders();
 }
 
-// 仅删除订单记录
 void OrdersPage::on_btnCancel_clicked() {
-    // 获取选中的行
     int row = ui->tableOrders->currentIndex().row();
     if (row < 0) {
         QMessageBox::warning(this, "提示", "请先选择要取消的订单！");
         return;
     }
 
-    // 获取订单号 (第一列 order_id)
-    QString orderId = model->data(model->index(row, 0)).toString();
+    qint64 orderId = model->data(model->index(row, 0)).toLongLong();
 
-    // 弹窗
     auto reply = QMessageBox::question(this, "确认取消",
                                        QString("确定要取消订单 %1 吗？").arg(orderId));
     if (reply != QMessageBox::Yes) return;
 
-    // 执行删除操作
-    QSqlQuery query;
-    query.prepare("DELETE FROM orders WHERE order_id = :oid");
-    query.bindValue(":oid", orderId);
+    QJsonObject data;
+    data.insert("userId", 1);
+    data.insert("orderId", orderId);
 
-    if (query.exec()) {
-        QMessageBox::information(this, "成功", "订单已成功取消。");
-        loadOrders(); // 刷新表格显示
-    } else {
-        QMessageBox::critical(this, "错误", "取消失败：" + query.lastError().text());
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CANCEL);
+    root.insert(Protocol::KEY_DATA, data);
+
+    NetworkManager::instance()->sendJson(root);
+}
+
+// 这里的定义必须和 .h 文件中的声明完全匹配
+void OrdersPage::onJsonReceived(const QJsonObject &obj) {
+    QString type = obj.value(Protocol::KEY_TYPE).toString();
+    QJsonObject data = obj.value(Protocol::KEY_DATA).toObject();
+
+    if (type == Protocol::TYPE_ORDER_LIST_RESP) {
+        QJsonArray orders = data.value("orders").toArray();
+        model->removeRows(0, model->rowCount());
+
+        for (int i = 0; i < orders.size(); ++i) {
+            QJsonObject o = orders[i].toObject();
+            QList<QStandardItem*> rowItems;
+            rowItems << new QStandardItem(QString::number(o.value("id").toVariant().toLongLong()));
+            rowItems << new QStandardItem(QString::number(o.value("flightId").toVariant().toLongLong()));
+            rowItems << new QStandardItem(o.value("passengerName").toString());
+            rowItems << new QStandardItem(o.value("status").toString());
+            rowItems << new QStandardItem(o.value("createTime").toString());
+            model->appendRow(rowItems);
+        }
+    }
+    else if (type == Protocol::TYPE_ORDER_CANCEL_RESP) {
+        QMessageBox::information(this, "成功", "订单已取消");
+        loadOrders(); // 成功后自动刷新列表
     }
 }
