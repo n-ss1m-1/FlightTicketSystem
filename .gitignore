@@ -80,3 +80,8 @@ CMakeLists.txt.user*
 */.rcc/
 */.uic/
 */build*/
+/FlightTicketClient/.qtcreator
+/FlightTicketServer/.qtcreator
+/FlightTicketServer/.qtcreator
+FlightTicketClient/.qtcreator/FlightTicketClient.pro.user
+FlightTicketServer/.qtcreator/FlightTicketServer.pro.user

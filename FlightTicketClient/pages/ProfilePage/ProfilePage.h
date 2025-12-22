@@ -27,6 +27,8 @@ private slots:
 
     void on_cbShowIdCard_toggled(bool checked);
 
+    void on_btnChangePhone_clicked();
+
 private:
     Ui::ProfilePage *ui;
 
