@@ -51,9 +51,49 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 网络
     auto nm = NetworkManager::instance();
-    connect(nm, &NetworkManager::connected, this, []{ qDebug() << "服务器已连接"; });
-    connect(nm, &NetworkManager::disconnected, this, [this]{
-        QMessageBox::warning(this, "网络断开", "与服务器连接已断开");
+    connect(nm, &NetworkManager::connected, this, [this]{
+        qDebug() << "服务器已连接";
+
+        if (m_reconnectPending) {
+            m_reconnectPending = false;
+
+            QMessageBox::information(this, "重连成功", "已重新连接到服务器。");
+        }
+    });
+
+    // 未连接时弹窗重连
+    auto showReconnectDialog = [this, nm](const QString& title, const QString& text) {
+        if (m_reconnectDialogShowing) return;
+        m_reconnectDialogShowing = true;
+
+        QMessageBox box(this);
+        box.setWindowTitle(title);
+        box.setText(text);
+
+        box.addButton("重连", QMessageBox::AcceptRole);
+        box.addButton("取消", QMessageBox::RejectRole);
+
+        box.exec();
+
+        m_reconnectDialogShowing = false;
+
+        if (box.buttonRole(box.clickedButton()) == QMessageBox::AcceptRole) {
+            m_reconnectPending = true;
+            nm->reconnect();
+        }
+    };
+
+    connect(nm, &NetworkManager::notConnected, this, [=]{
+        showReconnectDialog("未连接服务器", "当前未连接服务器。是否尝试重连？");
+    });
+
+    connect(nm, &NetworkManager::disconnected, this, [=]{
+        showReconnectDialog("网络断开", "与服务器连接已断开。是否尝试重连？");
+    });
+
+    connect(nm, &NetworkManager::errorOccurred, this, [=](const QString& err){
+        m_reconnectPending = false;
+        showReconnectDialog("网络错误", "发生网络错误：\n" + err + "\n是否尝试重连？");
     });
 
     nm->connectToServer(kHost, kPort);

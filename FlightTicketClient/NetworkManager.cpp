@@ -1,6 +1,7 @@
 #include "NetworkManager.h"
 #include <QJsonDocument>
 #include <QDebug>
+#include <QMessageBox>
 
 NetworkManager* NetworkManager::instance()
 {
@@ -21,6 +22,7 @@ NetworkManager::NetworkManager(QObject *parent)
 
 void NetworkManager::connectToServer(const QString &host, quint16 port)
 {
+    setServer(host, port);
     if (isConnected()) return;
     m_socket.connectToHost(host, port);
 }
@@ -34,6 +36,7 @@ void NetworkManager::sendJson(const QJsonObject &obj)
 {
     if (!isConnected()) {
         qWarning() << "未连接，无法发送";
+        emit notConnected();
         return;
     }
     QJsonDocument doc(obj);
@@ -65,6 +68,23 @@ void NetworkManager::processBuffer()
             qWarning() << "JSON parse error:" << err.errorString();
         }
     }
+}
+
+void NetworkManager::setServer(const QString &host, quint16 port)
+{
+    m_host = host;
+    m_port = port;
+}
+
+void NetworkManager::reconnect()
+{
+    if (isConnected()) return;
+    if (m_host.isEmpty() || m_port == 0) {
+        qWarning() << "Server host/port not set";
+        return;
+    }
+    m_socket.abort();
+    m_socket.connectToHost(m_host, m_port);
 }
 
 void NetworkManager::login(const QString &username, const QString &password)
@@ -111,6 +131,17 @@ void NetworkManager::changePassword(const QString &username, const QString &oldP
     sendJson(req);
 }
 
-void NetworkManager::onConnected() { emit connected(); }
-void NetworkManager::onDisconnected() { emit disconnected(); }
-void NetworkManager::onError(QAbstractSocket::SocketError) { emit errorOccurred(m_socket.errorString()); }
+void NetworkManager::onConnected() {
+    emit connected();
+}
+
+void NetworkManager::onDisconnected() {
+    emit disconnected();
+}
+
+void NetworkManager::onError(QAbstractSocket::SocketError err) {
+    if (err == QAbstractSocket::RemoteHostClosedError) {
+        return; // 避免和disconnected()重复
+    }
+    emit errorOccurred(m_socket.errorString());
+}
