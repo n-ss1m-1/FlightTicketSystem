@@ -1,100 +1,116 @@
 #include "FlightsPage.h"
 #include "ui_FlightsPage.h"
-#include <QSqlQuery>
-#include <QSqlError>
+#include "NetworkManager.h"
+#include "Common/Protocol.h" // 必须引入协议头文件
+#include <QJsonArray>
 #include <QMessageBox>
-#include <QDebug>
-#include <QStandardItemModel>
+#include <QInputDialog>
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::FlightsPage)
 {
     ui->setupUi(this);
-    model = new QSqlQueryModel(this);
 
-    // 日期默认为今天
-    ui->dateEdit->setDate(QDate::currentDate());
-    ui->dateEdit->setCalendarPopup(true);
-
-    // 初始化下拉框数据
-    QStringList cities;
-    cities << "北京" << "上海" << "广州" << "深圳" << "成都" << "杭州";
-    ui->comboDep->addItems(cities);
-    ui->comboDest->addItems(cities);
-
-    // 设置模拟表头
-    QStandardItemModel *testModel = new QStandardItemModel(this);
-    testModel->setHorizontalHeaderLabels({"ID", "航班号", "出发地", "目的地", "起飞时间", "票价"});
-
-    // 假数据作为界面预览
-    QList<QStandardItem*> row1;
-    row1 << new QStandardItem("1") << new QStandardItem("CA1234") << new QStandardItem("北京")
-         << new QStandardItem("上海") << new QStandardItem("10:00") << new QStandardItem("￥850");
-    testModel->appendRow(row1);
-
-    ui->tableView->setModel(testModel);
-
-    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    model = new QStandardItemModel(this);
+    // 根据服务端返回的 Common::FlightInfo 结构设置表头
+    model->setHorizontalHeaderLabels({"ID", "航班号", "出发地", "目的地", "日期", "起飞时间", "票价"});
+    ui->tableView->setModel(model);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+
+    // 监听网络数据
+    connect(NetworkManager::instance(), &NetworkManager::jsonReceived, this, &FlightsPage::onJsonReceived);
+
+    // 初始化下拉框
+    ui->comboDep->addItems({"北京", "上海", "广州", "深圳", "成都", "杭州"});
+    ui->comboDest->addItems({"北京", "上海", "广州", "深圳", "成都", "杭州"});
+    ui->dateEdit->setDate(QDate::currentDate());
 }
 
-FlightsPage::~FlightsPage()
-{
-    delete ui;
-}
+FlightsPage::~FlightsPage() { delete ui; }
 
+// 发送查询请求
 void FlightsPage::on_btnSearch_clicked()
 {
-    QString dep = ui->comboDep->currentText();
-    QString dest = ui->comboDest->currentText();
-    QString date = ui->dateEdit->date().toString("yyyy-MM-dd");
+    QJsonObject data;
+    data.insert("fromCity", ui->comboDep->currentText());
+    data.insert("toCity", ui->comboDest->currentText());
+    data.insert("date", ui->dateEdit->date().toString(Qt::ISODate)); // 服务端要求 ISODate
 
-    QString sql = QString("SELECT id, flight_no AS '航班号', departure AS '出发地', "
-                          "destination AS '目的地', flight_date AS '日期', price AS '价格' "
-                          "FROM flights "
-                          "WHERE departure='%1' AND destination='%2' AND flight_date='%3'")
-                      .arg(dep).arg(dest).arg(date);
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_FLIGHT_SEARCH);
+    root.insert(Protocol::KEY_DATA, data);
 
-    model->setQuery(sql);
-
-    if (model->lastError().isValid()) {
-        QMessageBox::critical(this, "错误", "查询失败: " + model->lastError().text());
-    } else {
-        ui->tableView->setModel(model);
-        ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
-        ui->tableView->setColumnHidden(0, true);
-    }
+    NetworkManager::instance()->sendJson(root);
 }
 
+// 发送订票请求
 void FlightsPage::on_btnBook_clicked()
 {
-    // 1. 获取选中的行
-    int curRow = ui->tableView->currentIndex().row();
-    if (curRow < 0) {
-        QMessageBox::warning(this, "提示", "请先在列表中点击选择一个航班！");
+    int row = ui->tableView->currentIndex().row();
+    if (row < 0) {
+        QMessageBox::warning(this, "提示", "请先选择一个航班！");
         return;
     }
 
-    // 2. 取出航班信息 (假设ID在第0列，航班号在第1列)
-    QString flightId = model->data(model->index(curRow, 0)).toString();
-    QString flightNo = model->data(model->index(curRow, 1)).toString();
+    // 从表格获取 ID (假设ID在第0列)
+    qint64 flightId = model->data(model->index(row, 0)).toLongLong();
 
-    // 3. 确认框
-    auto reply = QMessageBox::question(this, "订票确认", "确定要预订航班 " + flightNo + " 吗？");
-    if (reply != QMessageBox::Yes) return;
+    // 服务端要求：passengerName 和 passengerIdCard
+    // 这里简单弹窗询问，实际开发中可以从用户信息里读
+    bool ok;
+    QString name = QInputDialog::getText(this, "乘客信息", "请输入乘客姓名:", QLineEdit::Normal, "", &ok);
+    if (!ok || name.isEmpty()) return;
+    QString idCard = QInputDialog::getText(this, "乘客信息", "请输入身份证号:", QLineEdit::Normal, "", &ok);
+    if (!ok || idCard.isEmpty()) return;
 
-    // 4. 执行订票操作（插入订单记录）
-    QSqlQuery query;
-    query.prepare("INSERT INTO orders (flight_id, user_id, order_time, status) "
-                  "VALUES (:fid, :uid, NOW(), '已支付')");
-    query.bindValue(":fid", flightId);
-    query.bindValue(":uid", 1); // 默认当前用户ID为1
+    QJsonObject data;
+    data.insert("userId", 1); // 临时固定为1，登录功能完成后需改为实际ID
+    data.insert("flightId", flightId);
+    data.insert("passengerName", name);
+    data.insert("passengerIdCard", idCard);
 
-    if (query.exec()) {
-        QMessageBox::information(this, "成功", "订票成功！订单已生成。");
-    } else {
-        QMessageBox::critical(this, "订票失败", "数据库错误: " + query.lastError().text());
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CREATE);
+    root.insert(Protocol::KEY_DATA, data);
+
+    NetworkManager::instance()->sendJson(root);
+}
+
+// 处理回复
+void FlightsPage::onJsonReceived(const QJsonObject &obj)
+{
+    QString type = obj.value(Protocol::KEY_TYPE).toString();
+    QJsonObject data = obj.value(Protocol::KEY_DATA).toObject();
+
+    // 1. 处理查询结果
+    if (type == Protocol::TYPE_FLIGHT_SEARCH_RESP) {
+        QJsonArray flights = data.value("flights").toArray();
+        model->removeRows(0, model->rowCount()); // 清空
+
+        for (int i = 0; i < flights.size(); ++i) {
+            QJsonObject f = flights[i].toObject();
+            QList<QStandardItem*> row;
+            // 字段名根据 Common::flightToJson 里的定义
+            row << new QStandardItem(QString::number(f.value("id").toVariant().toLongLong()));
+            row << new QStandardItem(f.value("flightNo").toString());
+            row << new QStandardItem(f.value("fromCity").toString());
+            row << new QStandardItem(f.value("toCity").toString());
+            row << new QStandardItem(f.value("date").toString());
+            row << new QStandardItem(f.value("time").toString());
+            row << new QStandardItem(QString::number(f.value("price").toDouble()));
+            model->appendRow(row);
+        }
+        ui->tableView->setColumnHidden(0, true);
+    }
+    // 2. 处理订票结果
+    else if (type == Protocol::TYPE_ORDER_CREATE_RESP) {
+        QMessageBox::information(this, "成功", obj.value("message").toString());
+    }
+    // 3. 处理通用错误
+    else if (type == Protocol::TYPE_ERROR) {
+        QMessageBox::critical(this, "错误", obj.value("message").toString());
     }
 }

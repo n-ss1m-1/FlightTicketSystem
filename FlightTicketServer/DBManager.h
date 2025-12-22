@@ -17,7 +17,8 @@ enum class DBResult
     ConnectFailed,
     QueryFailed,
     NoData,
-    TransactionFailed
+    TransactionFailed,
+    updateFailed
 };
 
 class DBManager
@@ -56,7 +57,7 @@ public:
     DBResult getUserById(qint64 userId,Common::UserInfo& user,QString* errMsg=nullptr);
     DBResult addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg);
     DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg);
-    DBResult updateInfoByUserId(const QString& username,const QString& password,const QString& phone,QString* errMsg);  //未实现
+    DBResult updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg);
     //航班                    //flights作为传出参数
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);

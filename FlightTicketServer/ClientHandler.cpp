@@ -2,8 +2,9 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QDebug>
+#include <QRegularExpression>   //正则表达式
 #include "Common/Protocol.h"
-#include "DBManager.h"  // <--- 引入队友的数据库管理类
+#include "DBManager.h"
 
 ClientHandler::ClientHandler(QTcpSocket *socket, QObject *parent)
     : QObject(parent)
@@ -127,6 +128,39 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         return;
     }
+    //根据用户名修改电话号码
+    else if(type == Protocol::TYPE_CHANGE_PHONE)
+    {
+        const QString username=data.value("username").toString();
+        const QString newPhone=data.value("newPhone").toString();
+        if (username.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户名不能为空"));
+            return;
+        }
+        if(newPhone.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "新的手机号不能为空"));
+            return;
+        }
+        static const QRegularExpression phoneReg("^1[3-9]\\d{9}$");  //第一位：1  第二位：3~9 后面接9个数字
+        if (!phoneReg.match(newPhone).hasMatch()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "手机号格式无效（第一位:1  第二位:3~9  后面接任意9个数字）"));
+            return;
+        }
+
+        qInfo()<<"change phone request: user:"<<username<<" newPhone:"<<newPhone;
+
+        DBResult res = db.updatePhoneByUsername(username,newPhone,&errMsg);
+        if(res == DBResult::Success)
+        {
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_CHANGE_PHONE_RESP,QJsonObject(),"电话号码修改成功"));
+        }
+        else
+        {
+            qCritical()<<"phone change error:"<<errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"电话号码修改失败"));
+        }
+        return;
+    }
     //根据出发地+目的地+日期查询航班
     else if(type == Protocol::TYPE_FLIGHT_SEARCH)
     {
@@ -234,7 +268,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         return;
     }
-    //取消订单(根据userId和orderId)
+    //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)
     {
         const qint64 userId=data.value("userId").toVariant().toLongLong();
