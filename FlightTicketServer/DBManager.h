@@ -61,10 +61,10 @@ public:
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
 
-    //订单                    //neworderId作为传出参数
-    DBResult createOrder(Common::OrderInfo& order,qint64& newOrderId,QString* errMsg=nullptr);
+    //订单                    //order作为传出参数
+    DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
     DBResult getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);
-    DBResult cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg=nullptr);       //flightId用于seat+1
+    DBResult cancelOrder(qint64 userId,qint64 orderId,QString* errMsg=nullptr);       //通过userId和orderId来定位,避免用户A取消用户B的订单
 
 private:
     DBManager();       //单例模式

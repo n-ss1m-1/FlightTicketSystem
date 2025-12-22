@@ -290,7 +290,7 @@ DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QSt
 
 
 //订单                    //newOrderId作为传出参数
-DBResult DBManager::createOrder(Common::OrderInfo& order,qint64& newOrderId,QString* errMsg)
+DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 {
     //开启事务
     if(!beginTransaction())
@@ -317,12 +317,24 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,qint64& newOrderId,QStr
         return DBResult::QueryFailed;
     }
 
-    //更新订单座位
+    //2.更新订单座位
     Common::FlightInfo flight;
     getFlightById(order.flightId,flight,errMsg);
     order.seatNum=QString::number(flight.seatTotal-flight.seatLeft+1);
 
-    //2.插入订单数据
+    //3.通过flightId查询订单价格
+    QString priceSql=QString("select price_cents from flight where id=%1").arg(order.flightId);
+    QSqlQuery priceQuery=Query(priceSql,QList<QVariant>(),errMsg);
+    if(!priceQuery.isActive())
+    {
+        rollbackTransaction();
+        return DBResult::QueryFailed;
+    }
+    order.priceCents=priceQuery.value("price_cents").toInt();
+    //4.初始化订单状态：0 Booked
+    order.status=Common::OrderStatus::Booked;
+
+    //5.插入订单数据
     QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,status) values(?,?,?,?,?,?,?)";
     QList<QVariant>orderParams;
     orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<static_cast<int>(order.status);
@@ -333,10 +345,10 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,qint64& newOrderId,QStr
         rollbackTransaction();
         return DBResult::QueryFailed;
     }
-    //获取新订单ID
-    newOrderId=orderQuery.lastInsertId().toLongLong();
+    //6.获取新订单ID
+    order.id=orderQuery.lastInsertId().toLongLong();
 
-    //提交事务/中途事务回滚
+    //7.提交事务/中途事务回滚
     if(!commitTransaction())
     {
         rollbackTransaction();
@@ -368,7 +380,7 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& or
 
     return orders.isEmpty()? DBResult::NoData : DBResult::Success;
 }
-DBResult DBManager::cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg)
+DBResult DBManager::cancelOrder(qint64 userId,qint64 orderId,QString* errMsg)
 {
     //开启事务
     if(!beginTransaction())
@@ -378,9 +390,9 @@ DBResult DBManager::cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg)
     }
 
     //1.订单状态->取消
-    QString orderSql="update orders set status=? where id=? and status!=?";
+    QString orderSql="update orders set status=? where user_id=? and id=? and status=?";
     QList<QVariant>orderParams;
-    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Canceled);    //排除已消除的订单
+    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<userId<<orderId<<static_cast<int>(Common::OrderStatus::Booked);    //预定的可以取消，已取消或已完成的不能再取消
 
     int orderAffected=update(orderSql,orderParams,errMsg);
     if(orderAffected<=0)
@@ -390,7 +402,12 @@ DBResult DBManager::cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg)
         return DBResult::QueryFailed;
     }
 
-    //2.航班座位+1
+    //2.查询对应的flightId
+    QString flightSql=QString("select flight_id from orders where id=%1").arg(orderId);
+    QSqlQuery flightQuery=Query(flightSql,QList<QVariant>(),errMsg);
+    qint64 flightId=flightQuery.value("flight_id").toLongLong();
+
+    //3.航班座位+1
     QString seatSql="update flight set seat_left=seat_left+1 where id=?";
     QList<QVariant>seatParams;
     seatParams<<flightId;
@@ -403,7 +420,7 @@ DBResult DBManager::cancelOrder(qint64 orderId,qint64 flightId,QString* errMsg)
         return DBResult::QueryFailed;
     }
 
-    //提交事务
+    //4.提交事务
     if(!commitTransaction())
     {
         rollbackTransaction();
