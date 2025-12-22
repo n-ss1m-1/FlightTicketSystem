@@ -3,5 +3,7 @@
         <file>images/order.png</file>
         <file>images/plane.png</file>
         <file>images/user.png</file>
+        <file>images/homepageimage.PNG</file>
+        <file>images/plane2.png</file>
     </qresource>
 </RCC>

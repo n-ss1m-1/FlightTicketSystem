@@ -2,7 +2,8 @@
 #define FLIGHTSPAGE_H
 
 #include <QWidget>
-#include <QSqlQueryModel>
+#include <QStandardItemModel>
+#include <QJsonObject>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FlightsPage; }
@@ -13,16 +14,18 @@ class FlightsPage : public QWidget
     Q_OBJECT
 
 public:
-    FlightsPage(QWidget *parent = nullptr);
+    explicit FlightsPage(QWidget *parent = nullptr);
     ~FlightsPage();
 
 private slots:
-    void on_btnSearch_clicked(); // 查询按钮点击事件
-    void on_btnBook_clicked();   // 订票按钮点击事件
+    void on_btnSearch_clicked(); // 查询按钮
+    void on_btnBook_clicked();   // 订票按钮
+    // 用于监听网络数据的槽函数
+    void onJsonReceived(const QJsonObject &obj);
 
 private:
     Ui::FlightsPage *ui;
-    QSqlQueryModel *model;       // 数据显示模型
+    QStandardItemModel *model;   // 数据显示模型
 };
 
-#endif
+#endif // FLIGHTSPAGE_H
