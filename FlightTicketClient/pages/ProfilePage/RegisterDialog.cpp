@@ -247,7 +247,7 @@ void RegisterDialog::on_leIdCard_textEdited(const QString &)
 }
 
 
-void RegisterDialog::on_leRealName_textEdited(const QString &arg1)
+void RegisterDialog::on_leRealName_textEdited(const QString &)
 {
     validateRealName();
     updateSubmitEnabled();
