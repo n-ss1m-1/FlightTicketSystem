@@ -286,6 +286,11 @@ DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,
         flights.append(flightFromQuery(query));
     }
 
+    if(flights.isEmpty())
+    {
+
+    }
+
     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
 }
 DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg)
@@ -426,10 +431,26 @@ DBResult DBManager::cancelOrder(qint64 userId,qint64 orderId,QString* errMsg)
     }
 
     //2.查询对应的flightId
-    QString flightSql=QString("select flight_id from orders where id=%1").arg(orderId);
-    QSqlQuery flightQuery=Query(flightSql,QList<QVariant>(),errMsg);
-    qint64 flightId=flightQuery.value("flight_id").toLongLong();
+    QString flightSql="select flight_id from orders where id=?";
+    QList<QVariant> flightParams;
+    flightParams << orderId;
 
+    //执行查询并校验是否成功
+    QSqlQuery flightQuery=Query(flightSql, flightParams, errMsg);
+    if(!flightQuery.isActive()) {
+        rollbackTransaction();
+        if (errMsg) *errMsg = "查询航班ID失败：" + (errMsg->isEmpty() ? "SQL执行错误" : *errMsg);
+        return DBResult::QueryFailed;
+    }
+    //!!!调用next()定位到有效记录
+    if (!flightQuery.next()) {
+        rollbackTransaction();
+        if (errMsg) *errMsg = "未找到订单[" + QString::number(orderId) + "]关联的航班信息";
+        return DBResult::NoData;
+    }
+
+    qint64 flightId=flightQuery.value("flight_id").toLongLong();
+    qDebug()<<"flightId: "<<flightId;
     //3.航班座位+1
     QString seatSql="update flight set seat_left=seat_left+1 where id=?";
     QList<QVariant>seatParams;
