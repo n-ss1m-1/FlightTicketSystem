@@ -2,7 +2,7 @@
 #include "FlightServer.h"
 #include "DBManager.h"
 
-static QString DBpassword = "cyw20200811"; // 数据库密码
+static QString DBpassword = "passwd"; // 数据库密码
 
 int main(int argc, char *argv[])
 {

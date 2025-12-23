@@ -1,0 +1,272 @@
+[33mcommit 20cb55af81605a155bdc2a570084378b5c131244[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: c3 <3233851773@qq.com>
+Date:   Tue Dec 23 18:32:31 2025 +0800
+
+    使用UserManager 维护和获取用户信息
+
+[33mcommit 5b80b400e649bc78fc0618cef494141f195ebdaa[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: c3 <3233851773@qq.com>
+Date:   Tue Dec 23 17:54:39 2025 +0800
+
+    新增:用户管理类--维护在线用户信息 保证真正的登陆 提高安全性
+
+[33mcommit 20c913ea54f9a467849936a36c783b420a00eed4[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Tue Dec 23 17:31:17 2025 +0800
+
+    使主页图片可拉伸，修改主页文字
+
+[33mcommit ff35fe32a27bafdf87545d4bcdf0bf6e288b9f55[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Tue Dec 23 16:45:43 2025 +0800
+
+    修改个人界面，使用NetworkManager中的username变量
+
+[33mcommit 105407e40e6aebc4a64d02babbe204a6851774ee[m
+Merge: 545a81d 7f5fe64
+Author: zmh20205301947 <zmh20205301947@gmail.com>
+Date:   Tue Dec 23 16:20:03 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit 545a81d5f7958e25895fc75319abeede03b2502d[m
+Author: zmh20205301947 <zmh20205301947@gmail.com>
+Date:   Tue Dec 23 16:19:54 2025 +0800
+
+    增加m_username，用username确定账户
+
+[33mcommit 7f5fe6446aad207f484cbd08176a8707f8a6266d[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Tue Dec 23 15:00:18 2025 +0800
+
+    客户端增加应用设置
+
+[33mcommit 077e13f15b1b151c8a198bc89c6eb4673ef53f53[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Tue Dec 23 14:26:09 2025 +0800
+
+    修改客户端手机号要求，与服务端一致
+
+[33mcommit 607f72a161b512701fc6cc643d1961df983c1adf[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Mon Dec 22 21:17:42 2025 +0800
+
+    客户端增加修改电话
+
+[33mcommit 2e9be62231089fc5bae5eceea7bb5b1a130ace4a[m
+Author: zmh20205301947 <zmh20205301947@gmail.com>
+Date:   Mon Dec 22 18:37:00 2025 +0800
+
+    修改时间显示
+
+[33mcommit de982d26121f8d840fae02dd98b41ed1dae47935[m
+Merge: fd30230 d3242ae
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Mon Dec 22 18:11:53 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit fd30230eab2b0eec4b25fa1847ffa1dd2ab3ab03[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Mon Dec 22 18:11:02 2025 +0800
+
+    新增个人信息显示
+
+[33mcommit d3242ae06d7e126aac3d9d82d35c4ec8b26fa433[m
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 17:45:14 2025 +0800
+
+    修改了查询sql的错误
+
+[33mcommit 2fd362443d2a52cafc80b9becbe4d7985d8389ed[m
+Merge: df999da e69ab57
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 17:36:11 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit df999da48ccc7ec28cb66c2f056146c36f59e716[m
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 17:35:22 2025 +0800
+
+    增加功能：修改电话号码
+
+[33mcommit e69ab576888451e4d1750ffbe6add722b8f3924d[m
+Author: zmh20205301947 <zmh20205301947@gmail.com>
+Date:   Mon Dec 22 17:33:04 2025 +0800
+
+    客户端连接服务端
+
+[33mcommit cdf56a46c6c7c264b332538802c6281ba154b536[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Mon Dec 22 16:59:52 2025 +0800
+
+    优化修改密码
+
+[33mcommit 67efb0c9d7e2d4a4c879987bd45bda65001721fd[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Mon Dec 22 15:29:59 2025 +0800
+
+    优化注册
+
+[33mcommit 16c37569a85492b1b4b1d68d232666762ed7b3c5[m
+Merge: 1ae74e4 1cdfd9c
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 14:08:44 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit 1ae74e4e5f7d4b23c0185804e99c7765d97d97a5[m
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 14:06:05 2025 +0800
+
+    添加功能:查询航班 创建订单 查询订单 取消订单
+
+[33mcommit cd04d85abb6aff70ec89d571627c2f179dedb475[m
+Author: c3 <3233851773@qq.com>
+Date:   Mon Dec 22 14:03:45 2025 +0800
+
+    修改了函数参数以贴合业务逻辑
+
+[33mcommit 1cdfd9c07ffaa1bb10f331949af59274a5278d97[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sun Dec 21 21:24:32 2025 +0800
+
+    添加网络断开与重连弹窗
+
+[33mcommit 6e604f8c833a809b8ea074538003b850e02e07f2[m
+Author: zmh20205301947 <zmh20205301947@gmail.com>
+Date:   Sun Dec 21 13:46:14 2025 +0800
+
+    订票、订单
+
+[33mcommit 39eacf92867b2e99ac26f0d6a0377c2ed000537e[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 20:28:49 2025 +0800
+
+    添加注册和修改密码
+
+[33mcommit 6a4c0be28c770423731e94ab58613b0d69476cb3[m
+Merge: 5da1627 777b4b6
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 15:53:59 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit 5da1627d8e09d86609c1345d02b335b3c42774c3[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 15:53:37 2025 +0800
+
+    修改connect函数使之兼容不同数据库驱动
+
+[33mcommit 777b4b660fe2e044d1d4940c6c7e41209b9b15cc[m
+Author: i3o8ogg <160718324+i3o8ogg@users.noreply.github.com>
+Date:   Sat Dec 20 15:42:03 2025 +0800
+
+    Delete FlightTicketClient/LoginWindow.h
+
+[33mcommit 1d5ff8ed3d61ec82a879cf43a4794e94e0af8abc[m
+Author: i3o8ogg <160718324+i3o8ogg@users.noreply.github.com>
+Date:   Sat Dec 20 15:41:53 2025 +0800
+
+    Delete FlightTicketClient/LoginWindow.cpp
+
+[33mcommit 898ecffbe4ac1d05d833bda3248e60a7e59e5c9b[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 15:34:31 2025 +0800
+
+    添加登录界面
+
+[33mcommit 29a7e50201f7ad39d4e8b137e549c43e5e18ada0[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 15:34:09 2025 +0800
+
+    修改Connect函数。给数据库密码设置单独变量
+
+[33mcommit 60a9184915f6596834543db36c38ecf2102c05e9[m
+Merge: b104957 8d6d981
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 14:07:17 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit b104957effea2ed4166cba927685535d8ff489ed[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sat Dec 20 14:05:18 2025 +0800
+
+    修改客户端文件结构
+
+[33mcommit 8d6d981e286f1351cd07fe0841ee9ba9d6a74c24[m
+Author: c3 <3233851773@qq.com>
+Date:   Thu Dec 18 15:49:23 2025 +0800
+
+    修改了一些细节
+
+[33mcommit 0fd53138c5b83863c42a895c2159f5fd92afa1a6[m
+Merge: b8b6ce8 5e3a2ef
+Author: c3 <3233851773@qq.com>
+Date:   Wed Dec 17 22:12:24 2025 +0800
+
+    Merge branch 'master' of https://github.com/i3o8ogg/FlightTicketSystem
+
+[33mcommit b8b6ce85934a5c1b80524a737f6ef8a6f8d32224[m
+Author: c3 <3233851773@qq.com>
+Date:   Wed Dec 17 22:12:14 2025 +0800
+
+    暂存本地修改
+
+[33mcommit 5e3a2ef8485265032ddb13d07b95541f6090a2b9[m
+Author: Aung <alhalh.aa69.aa@gmail.com>
+Date:   Wed Dec 17 22:08:23 2025 +0800
+
+    补充用户模块通信协议（登录/注册/改密）
+
+[33mcommit 89fdf0ac4da7309794fdd85313d3f6a227aa2357[m
+Author: Aung <alhalh.aa69.aa@gmail.com>
+Date:   Wed Dec 17 22:02:19 2025 +0800
+
+    更新服务端：实现用户登录、注册和修改密码功能
+
+[33mcommit 18e1c23ccdda9d9243e2ec25bafb88abef05c73a[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Wed Dec 17 21:23:50 2025 +0800
+
+    客户端UI框架
+
+[33mcommit 2e66e0db53242a7fea3887d4d51a80566cc722c6[m
+Author: c3 <3233851773@qq.com>
+Date:   Wed Dec 17 21:12:16 2025 +0800
+
+    添加了DBMannager+修改了数据表
+
+[33mcommit 31614dfdb03d9f8d91608a1820d8c4daa06d3963[m
+Author: c3 <3233851773@qq.com>
+Date:   Wed Dec 17 20:56:08 2025 +0800
+
+    添加了DBMannager 数据库的相关操作
+
+[33mcommit 1cc91e37f06ebc58a719f0af79dacd3fee2f2a18[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sun Dec 14 14:13:17 2025 +0800
+
+    测试
+
+[33mcommit 5c88b4909ceeab140d513aa02996ccc72e2d32cc[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sun Dec 14 14:09:17 2025 +0800
+
+    测试
+
+[33mcommit 36dffbda68e6000b430bae96e0aac1b53fd9a343[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sun Dec 14 14:07:40 2025 +0800
+
+    测试
+
+[33mcommit 60e5a00cd1115382c0b61128c4e112fad7fc2f86[m
+Author: i3o8ogg <3091130670@qq.com>
+Date:   Sun Dec 7 18:14:56 2025 +0800
+
+    2
+
+[33mcommit 6850403125e5c079bccc24e293
