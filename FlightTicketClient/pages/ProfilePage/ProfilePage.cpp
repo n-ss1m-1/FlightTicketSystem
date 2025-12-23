@@ -57,7 +57,7 @@ void ProfilePage::updateLoginUI()
 {
     if (m_loggedIn) {
         ui->btnLogin->setText("退出登录");
-        ui->lblStatus->setText("已登录：" + m_username);
+        ui->lblStatus->setText("已登录：" + NetworkManager::instance()->m_username);
         ui->btnRegister->setText("修改密码");
     } else {
         ui->btnLogin->setText("登录");
@@ -121,8 +121,8 @@ void ProfilePage::on_btnLogin_clicked()
         QMessageBox box(this);
         box.setWindowTitle("确认退出");
         box.setText("确定要退出登录吗？");
-        if (!m_username.isEmpty())
-            box.setInformativeText("当前用户：" + m_username);
+        if (!NetworkManager::instance()->m_username.isEmpty())
+            box.setInformativeText("当前用户：" + NetworkManager::instance()->m_username);
 
         QPushButton *btnLogout = box.addButton("确认", QMessageBox::AcceptRole);
         QPushButton *btnCancel = box.addButton("取消", QMessageBox::RejectRole);
@@ -132,8 +132,7 @@ void ProfilePage::on_btnLogin_clicked()
 
         if (box.clickedButton() == btnLogout) {
             m_loggedIn = false;
-            NetworkManager::instance()->m_username = "";
-            m_username.clear();
+            NetworkManager::instance()->m_username.clear();
             m_userJson = QJsonObject();
             updateUserInfoUI();
             updateLoginUI();
@@ -165,8 +164,6 @@ void ProfilePage::on_btnLogin_clicked()
 
                         NetworkManager::instance()->m_username = data.value("username").toString();
 
-                        m_username = data.value("username").toString();
-                        if (m_username.isEmpty()) m_username = data.value("realName").toString();
                         m_userJson = data;
                         updateUserInfoUI();
                         updateLoginUI();
@@ -236,7 +233,7 @@ void ProfilePage::on_btnRegister_clicked()
 
     connect(dlg, &ChangePwdDialog::changePwdSubmitted, this,
             [this](const QString &oldPwd, const QString &newPwd) {
-                NetworkManager::instance()->changePassword(m_username, oldPwd, newPwd);
+                NetworkManager::instance()->changePassword(NetworkManager::instance()->m_username, oldPwd, newPwd);
             });
 
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived, dlg,
@@ -284,7 +281,7 @@ void ProfilePage::on_btnChangePhone_clicked()
             [this](const QString &newPhone) {
 
                 QJsonObject data;
-                data.insert("username", m_username);
+                data.insert("username", NetworkManager::instance()->m_username);
                 data.insert("newPhone", newPhone);
 
                 QJsonObject req;

@@ -33,7 +33,7 @@ private:
     Ui::ProfilePage *ui;
 
     bool m_loggedIn = false; // 登录状态
-    QString m_username; // 记录用户名
+    // QString m_username; // 移至 NetworkManager
     QJsonObject m_userJson; // 记录用户信息
 
     void updateLoginUI(); // 刷新按钮/界面
