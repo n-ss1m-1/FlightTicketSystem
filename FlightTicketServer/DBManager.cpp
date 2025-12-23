@@ -303,7 +303,7 @@ DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QSt
 }
 
 
-//订单                    //newOrderId作为传出参数
+//订单
 DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 {
     //开启事务
@@ -333,18 +333,27 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 
     //2.更新订单座位
     Common::FlightInfo flight;
-    getFlightById(order.flightId,flight,errMsg);
+    if(getFlightById(order.flightId, flight, errMsg)!=DBResult::Success)
+    {
+        rollbackTransaction();
+        if (errMsg) *errMsg = "获取航班信息失败: " + *errMsg;
+        return DBResult::QueryFailed;
+    }
     order.seatNum=QString::number(flight.seatTotal-flight.seatLeft+1);
 
     //3.通过flightId查询订单价格
-    QString priceSql=QString("select price_cents from flight where id=%1").arg(order.flightId);
-    QSqlQuery priceQuery=Query(priceSql,QList<QVariant>(),errMsg);
-    if(!priceQuery.isActive())
+    QString priceSql="select price_cents from flight where id=?";
+    QList<QVariant> priceParams;
+    priceParams<<order.flightId;
+    QSqlQuery priceQuery=Query(priceSql, priceParams, errMsg);
+    if(!priceQuery.isActive() || !priceQuery.next())
     {
         rollbackTransaction();
+        if (errMsg) *errMsg="查询航班价格失败: 无该航班价格信息";
         return DBResult::QueryFailed;
     }
     order.priceCents=priceQuery.value("price_cents").toInt();
+
     //4.初始化订单状态：0 Booked
     order.status=Common::OrderStatus::Booked;
 

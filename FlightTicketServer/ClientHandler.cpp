@@ -5,10 +5,12 @@
 #include <QRegularExpression>   //正则表达式
 #include "Common/Protocol.h"
 #include "DBManager.h"
+#include "OnlineUserManager.h"
 
 ClientHandler::ClientHandler(QTcpSocket *socket, QObject *parent)
     : QObject(parent)
     , m_socket(socket)
+    , isLogin(false)
 {
     connect(m_socket, &QTcpSocket::readyRead, this, &ClientHandler::onReadyRead);
     connect(m_socket, &QTcpSocket::disconnected, this, &ClientHandler::onDisconnected);
@@ -45,7 +47,9 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     const QJsonObject data = obj.value(Protocol::KEY_DATA).toObject();
 
     // 获取数据库单例
-    DBManager &db = DBManager::instance();
+    DBManager& db = DBManager::instance();
+    //获取用户管理的单例
+    OnlineUserManager& userManager = OnlineUserManager::instance();
 
     QString errMsg;
     //登录
@@ -63,10 +67,16 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         // 2. 校验结果 (DBResult::Success 且 密码匹配)
         // 注意：这里假设数据库里存的是明文密码，实际开发通常要加密，但作业可以直接比对
-        if (res == DBResult::Success && user.password == password) {
+        if (res == DBResult::Success && user.password == password)
+        {
+            this->setUserInfo(user);    //保存用户信息到当前ClientHandler
+            isLogin=true;
+            emit loginSuccess();        //发送信号 将用户信息保存到server的映射表中
+
             // 登录成功，把用户信息回传给客户端
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_LOGIN_RESP, Common::userToJson(user), "登录成功"));
-        } else {
+        } else
+        {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "账号或密码错误"));
         }
         return;
@@ -84,7 +94,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         // 检查用户是否已存在
         Common::UserInfo existUser;
-        if (db.getUserByUsername(username, existUser) == DBResult::Success) {
+        if (db.getUserByUsername(username, existUser) == DBResult::Success)
+        {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在"));
             return;
         }
@@ -92,9 +103,11 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         DBResult ret = db.addUser(username,password,phone,realName,idCard,&errMsg);
 
-        if (ret == DBResult::Success) {
+        if (ret == DBResult::Success)
+        {
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_REGISTER_RESP, QJsonObject(), "注册成功"));
-        } else {
+        } else
+        {
             qCritical() << "Register DB Error:" << errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败，数据库错误"));
         }
@@ -103,6 +116,13 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
     //修改密码
     else if (type == Protocol::TYPE_CHANGE_PWD) {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
         const QString username = data.value("username").toString();
         const QString oldPwd = data.value("oldPassword").toString();
         const QString newPwd = data.value("newPassword").toString();
@@ -119,11 +139,14 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
 
         // 2. 更新新密码
-
         res=db.updatePasswdByUsername(username,newPwd,&errMsg);
-        if (res == DBResult::Success) {
+        if (res == DBResult::Success)
+        {
+            this->m_userInfo.password=newPwd;   //同步更新ClientHandler中的用户信息
+            userManager.addOnlineUser(this);    //覆盖更新在线用户管理表
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_CHANGE_PWD_RESP, QJsonObject(), "密码修改成功"));
-        } else {
+        } else
+        {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码修改失败"));
         }
         return;
@@ -131,6 +154,13 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     //根据用户名修改电话号码
     else if(type == Protocol::TYPE_CHANGE_PHONE)
     {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
         const QString username=data.value("username").toString();
         const QString newPhone=data.value("newPhone").toString();
         if (username.isEmpty()) {
@@ -152,6 +182,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         DBResult res = db.updatePhoneByUsername(username,newPhone,&errMsg);
         if(res == DBResult::Success)
         {
+            this->m_userInfo.phone=newPhone;    //同步更新ClientHandler中的用户信息
+            userManager.addOnlineUser(this);    //覆盖更新在线用户管理表
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_CHANGE_PHONE_RESP,QJsonObject(),"电话号码修改成功"));
         }
         else
@@ -205,9 +237,19 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     //创建订单
     else if(type == Protocol::TYPE_ORDER_CREATE)
     {
-        //需要客户端传入：user_id,flight_id,passenger_name,passenger_id_card (可以使用一个user给多个不同的passenger创建订单？)
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        //需要客户端传入：user_name,flight_id,passenger_name,passenger_id_card (可以使用一个user给多个不同的passenger创建订单？)
         Common::OrderInfo order;
-        order.userId=data.value("userId").toVariant().toLongLong();
+        const QString username=data.value("username").toString();
+        Common::UserInfo user;
+        db.getUserByUsername(username,user,&errMsg);
+        order.userId=user.id;
         order.flightId=data.value("flightId").toVariant().toLongLong();
         order.passengerName=data.value("passengerName").toString();
         order.passengerIdCard=data.value("passengerIdCard").toString();
@@ -228,6 +270,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
+        qInfo() << "create order request: from userId:" << order.userId << "flightId" << order.flightId << "passengerName" << order.passengerName << "passengerIdCard" <<order.passengerIdCard;
+
         DBResult res=db.createOrder(order,&errMsg);
         if(res == DBResult::Success)
         {
@@ -246,11 +290,20 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     //查询用户所有订单(根据userId)
     else if(type == Protocol::TYPE_ORDER_LIST)
     {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
         const qint64 userId=data.value("userId").toVariant().toLongLong();
         if (userId<=0) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
             return;
         }
+
+        qInfo() << "search orders request: from userId:" << userId;
 
         QList<Common::OrderInfo> orders;
         DBResult res=db.getOrdersByUserId(userId,orders,&errMsg);
@@ -271,6 +324,13 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)
     {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
         const qint64 userId=data.value("userId").toVariant().toLongLong();
         const qint64 orderId=data.value("orderId").toVariant().toLongLong();
         if (userId<=0) {
@@ -281,6 +341,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "orderid不能<=0"));
             return;
         }
+
+        qInfo() << "cancel order request: from userId:" << userId <<" orderId:" << orderId;
 
         DBResult res=db.cancelOrder(userId,orderId,&errMsg);
         if(res == DBResult::Success)
@@ -313,7 +375,11 @@ void ClientHandler::sendJson(const QJsonObject &obj)
 
 void ClientHandler::onDisconnected()
 {
-    qInfo() << "Client disconnected";
+    qInfo() << "Client disconnected"<<m_socket->peerAddress().toString();
+
+    //从在线用户列表中移除
+    OnlineUserManager::instance().removeOnlineUser(this);
+    //销毁连接和自身
     m_socket->deleteLater();
     deleteLater();
 }

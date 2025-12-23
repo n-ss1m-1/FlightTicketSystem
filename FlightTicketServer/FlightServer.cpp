@@ -1,6 +1,8 @@
 #include "FlightServer.h"
 #include "ClientHandler.h"
+#include "OnlineUserManager.h"
 #include <QTcpSocket>
+
 #include <QDebug>
 
 FlightServer::FlightServer(QObject *parent)
@@ -25,6 +27,13 @@ void FlightServer::onNewConnection()
     while (m_server.hasPendingConnections()) {
         QTcpSocket *socket = m_server.nextPendingConnection();
         qInfo() << "New client from" << socket->peerAddress().toString();
-        new ClientHandler(socket, this); // 断开时自销毁
+        ClientHandler* handler = new ClientHandler(socket, this); // 断开时自销毁
+
+        //登陆成功 注册到在线用户管理表中
+        connect(handler, &ClientHandler::loginSuccess, [handler](){
+            OnlineUserManager::instance().addOnlineUser(handler);
+        });
     }
 }
+
+
