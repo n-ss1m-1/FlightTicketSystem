@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     MainWindow.cpp \
     NetworkManager.cpp \
+    SettingsManager.cpp \
     main.cpp \
     pages/FlightsPage/FlightsPage.cpp \
     pages/HomePage/HomePage.cpp \
@@ -24,6 +25,7 @@ SOURCES += \
 HEADERS += \
     MainWindow.h \
     NetworkManager.h \
+    SettingsManager.h \
     pages/FlightsPage/FlightsPage.h \
     pages/HomePage/HomePage.h \
     pages/OrdersPage/OrdersPage.h \

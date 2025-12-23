@@ -6,6 +6,7 @@
 #include "RegisterDialog.h"
 #include "ChangePwdDialog.h"
 #include "ChangePhoneDialog.h"
+#include "SettingsManager.h"
 #include <QLineEdit>
 
 ProfilePage::ProfilePage(QWidget *parent)
@@ -14,6 +15,37 @@ ProfilePage::ProfilePage(QWidget *parent)
 {
     ui->setupUi(this);
     updateLoginUI();
+
+    ui->comboTheme->clear();
+    ui->comboTheme->addItem("跟随系统", (int)SettingsManager::ThemeMode::System);
+    ui->comboTheme->addItem("浅色",     (int)SettingsManager::ThemeMode::Light);
+    ui->comboTheme->addItem("深色",     (int)SettingsManager::ThemeMode::Dark);
+
+    auto &sm = SettingsManager::instance();
+
+    int themeIndex = ui->comboTheme->findData((int)sm.themeMode());
+    if (themeIndex >= 0) ui->comboTheme->setCurrentIndex(themeIndex);
+
+    int minScale = (int)(SettingsManager::instance().minScale * 100);
+    int maxScale = (int)(SettingsManager::instance().maxScale * 100);
+
+    ui->sliderScale->setRange(minScale, maxScale);
+    ui->sliderScale->setValue((int)qRound(sm.scaleFactor() * 100.0));
+    ui->lblScaleValue->setText(QString("%1%").arg(ui->sliderScale->value()));
+
+    // 主题切换
+    connect(ui->comboTheme, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int idx){
+        int data = ui->comboTheme->itemData(idx).toInt();
+        SettingsManager::instance().setThemeMode((SettingsManager::ThemeMode)data);
+    });
+
+    // 缩放
+    connect(ui->sliderScale, &QSlider::valueChanged,
+            this, [this](int v){
+        ui->lblScaleValue->setText(QString("%1%").arg(v));
+        SettingsManager::instance().setScaleFactor(v / 100.0);
+    });
 }
 
 ProfilePage::~ProfilePage()
