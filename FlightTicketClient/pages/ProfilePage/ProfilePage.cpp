@@ -5,6 +5,9 @@
 #include "NetworkManager.h"
 #include "RegisterDialog.h"
 #include "ChangePwdDialog.h"
+#include "ChangePhoneDialog.h"
+#include "SettingsManager.h"
+#include <QLineEdit>
 
 ProfilePage::ProfilePage(QWidget *parent)
     : QWidget(parent)
@@ -12,6 +15,37 @@ ProfilePage::ProfilePage(QWidget *parent)
 {
     ui->setupUi(this);
     updateLoginUI();
+
+    ui->comboTheme->clear();
+    ui->comboTheme->addItem("跟随系统", (int)SettingsManager::ThemeMode::System);
+    ui->comboTheme->addItem("浅色",     (int)SettingsManager::ThemeMode::Light);
+    ui->comboTheme->addItem("深色",     (int)SettingsManager::ThemeMode::Dark);
+
+    auto &sm = SettingsManager::instance();
+
+    int themeIndex = ui->comboTheme->findData((int)sm.themeMode());
+    if (themeIndex >= 0) ui->comboTheme->setCurrentIndex(themeIndex);
+
+    int minScale = (int)(SettingsManager::instance().minScale * 100);
+    int maxScale = (int)(SettingsManager::instance().maxScale * 100);
+
+    ui->sliderScale->setRange(minScale, maxScale);
+    ui->sliderScale->setValue((int)qRound(sm.scaleFactor() * 100.0));
+    ui->lblScaleValue->setText(QString("%1%").arg(ui->sliderScale->value()));
+
+    // 主题切换
+    connect(ui->comboTheme, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int idx){
+        int data = ui->comboTheme->itemData(idx).toInt();
+        SettingsManager::instance().setThemeMode((SettingsManager::ThemeMode)data);
+    });
+
+    // 缩放
+    connect(ui->sliderScale, &QSlider::valueChanged,
+            this, [this](int v){
+        ui->lblScaleValue->setText(QString("%1%").arg(v));
+        SettingsManager::instance().setScaleFactor(v / 100.0);
+    });
 }
 
 ProfilePage::~ProfilePage()
@@ -232,9 +266,69 @@ void ProfilePage::on_btnRegister_clicked()
     dlg->exec();
 }
 
+void ProfilePage::on_btnChangePhone_clicked()
+{
+    if (!m_loggedIn) {
+        QMessageBox::warning(this, "提示", "请先登录");
+        return;
+    }
+
+    auto *dlg = new ChangePhoneDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
 
 
+    const QString oldPhone = m_userJson.value("phone").toString();
+    dlg->setCurrentPhone(oldPhone);
 
+    connect(dlg, &ChangePhoneDialog::phoneSubmitted, this,
+            [this](const QString &newPhone) {
+
+                QJsonObject data;
+                data.insert("username", m_username);
+                data.insert("newPhone", newPhone);
+
+                QJsonObject req;
+                req.insert(Protocol::KEY_TYPE, Protocol::TYPE_CHANGE_PHONE);
+                req.insert(Protocol::KEY_DATA, data);
+
+                NetworkManager::instance()->sendJson(req);
+            });
+
+
+    connect(NetworkManager::instance(), &NetworkManager::jsonReceived, dlg,
+            [this, dlg](const QJsonObject &resp) {
+
+                const QString type = resp.value(Protocol::KEY_TYPE).toString();
+
+
+                if (type == Protocol::TYPE_CHANGE_PHONE_RESP) {
+                    const bool success = resp.value(Protocol::KEY_SUCCESS).toBool();
+                    const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+
+                    if (success) {
+
+                        const QString newPhone = dlg->findChild<QLineEdit*>("leNewPhone")->text().trimmed();
+                        m_userJson.insert("phone", newPhone);
+
+                        updateUserInfoUI();
+
+                        QMessageBox::information(this, "成功", msg.isEmpty() ? "电话号码修改成功" : msg);
+                        dlg->accept();
+                    } else {
+                        QMessageBox::warning(dlg, "失败", msg.isEmpty() ? "电话号码修改失败" : msg);
+                    }
+                    return;
+                }
+
+                if (type == Protocol::TYPE_ERROR) {
+                    const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+                    QMessageBox::warning(dlg, "失败", msg.isEmpty() ? "电话号码修改失败" : msg);
+                    return;
+                }
+            });
+
+    dlg->exec();
+}
 
 void ProfilePage::on_cbShowPhone_toggled(bool)
 {
@@ -251,4 +345,5 @@ void ProfilePage::on_cbShowIdCard_toggled(bool)
 {
     if (m_loggedIn) applyPrivacyMask();
 }
+
 
