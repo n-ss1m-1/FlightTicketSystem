@@ -32,8 +32,14 @@ OrdersPage::~OrdersPage() {
 }
 
 void OrdersPage::loadOrders() {
+
+    if (NetworkManager::instance()->m_username.isEmpty()) {
+        QMessageBox::warning(this, "提示", "未登录，无法获取订单。");
+        return;
+    }
+
     QJsonObject data;
-    data.insert("userId", 1); // 临时固定ID
+    data.insert("username", NetworkManager::instance()->m_username); // 按用户名查订单
 
     QJsonObject root;
     root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_LIST);
@@ -61,7 +67,7 @@ void OrdersPage::on_btnCancel_clicked() {
     if (reply != QMessageBox::Yes) return;
 
     QJsonObject data;
-    data.insert("userId", 1);
+    data.insert("username", NetworkManager::instance()->m_username);
     data.insert("orderId", orderId);
 
     QJsonObject root;

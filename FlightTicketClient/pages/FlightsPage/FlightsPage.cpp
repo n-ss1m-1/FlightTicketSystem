@@ -49,6 +49,13 @@ void FlightsPage::on_btnSearch_clicked()
 
 void FlightsPage::on_btnBook_clicked()
 {
+    // 检查是否已经登录
+    if (NetworkManager::instance()->m_username == "") {
+        QMessageBox::warning(this, "提示", "请先登录！");
+        return;
+    }
+
+
     int row = ui->tableView->currentIndex().row();
     if (row < 0) {
         QMessageBox::warning(this, "提示", "请先选择一个航班！");
@@ -65,7 +72,7 @@ void FlightsPage::on_btnBook_clicked()
     if (!ok || idCard.isEmpty()) return;
 
     QJsonObject data;
-    data.insert("userId", 1); // 暂时固定为1
+    data.insert("username", NetworkManager::instance()->m_username);
     data.insert("flightId", flightId);
     data.insert("passengerName", name);
     data.insert("passengerIdCard", idCard);
@@ -97,7 +104,7 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         for (int i = 0; i < flightsArr.size(); ++i) {
             QJsonObject fObj = flightsArr[i].toObject();
 
-            // 使用 models.h 中定义的解析函数，最稳妥
+            // 使用 models.h 中定义的解析函数
             Common::FlightInfo f = Common::flightFromJson(fObj);
 
             QList<QStandardItem*> row;

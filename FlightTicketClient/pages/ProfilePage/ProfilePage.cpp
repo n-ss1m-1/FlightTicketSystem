@@ -98,6 +98,7 @@ void ProfilePage::on_btnLogin_clicked()
 
         if (box.clickedButton() == btnLogout) {
             m_loggedIn = false;
+            NetworkManager::instance()->m_username = "";
             m_username.clear();
             m_userJson = QJsonObject();
             updateUserInfoUI();
@@ -127,6 +128,8 @@ void ProfilePage::on_btnLogin_clicked()
 
                     if (success) {
                         m_loggedIn = true;
+
+                        NetworkManager::instance()->m_username = data.value("username").toString();
 
                         m_username = data.value("username").toString();
                         if (m_username.isEmpty()) m_username = data.value("realName").toString();
