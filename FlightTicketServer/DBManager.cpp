@@ -286,11 +286,6 @@ DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,
         flights.append(flightFromQuery(query));
     }
 
-    if(flights.isEmpty())
-    {
-
-    }
-
     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
 }
 DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg)

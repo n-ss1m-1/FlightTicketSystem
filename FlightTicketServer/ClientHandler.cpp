@@ -227,6 +227,10 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             respData.insert("count",flights.size());
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_FLIGHT_SEARCH_RESP,respData,QString("航班查询成功,查询到%1条航班").arg(flights.size())));
         }
+        else if(res == DBResult::NoData)
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无相关航班"+errMsg));
+        }
         else
         {
             qCritical()<<"flight search error:"<<errMsg;
@@ -245,10 +249,10 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
 
         //需要客户端传入：user_name,flight_id,passenger_name,passenger_id_card (可以使用一个user给多个不同的passenger创建订单？)
+
+        Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const QString username=user.username;
         Common::OrderInfo order;
-        const QString username=data.value("username").toString();
-        Common::UserInfo user;
-        db.getUserByUsername(username,user,&errMsg);
         order.userId=user.id;
         order.flightId=data.value("flightId").toVariant().toLongLong();
         order.passengerName=data.value("passengerName").toString();
@@ -270,7 +274,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        qInfo() << "create order request: from userId:" << order.userId << "flightId" << order.flightId << "passengerName" << order.passengerName << "passengerIdCard" <<order.passengerIdCard;
+        qInfo() << "create order request: from username:" << username << "flightId" << order.flightId << "passengerName" << order.passengerName << "passengerIdCard" <<order.passengerIdCard;
 
         DBResult res=db.createOrder(order,&errMsg);
         if(res == DBResult::Success)
@@ -297,13 +301,14 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        const qint64 userId=data.value("userId").toVariant().toLongLong();
+        const Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const qint64 userId=user.id;
         if (userId<=0) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
             return;
         }
 
-        qInfo() << "search orders request: from userId:" << userId;
+        qInfo() << "search orders request: from username:" << user.username;
 
         QList<Common::OrderInfo> orders;
         DBResult res=db.getOrdersByUserId(userId,orders,&errMsg);
@@ -331,7 +336,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        const qint64 userId=data.value("userId").toVariant().toLongLong();
+        const Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const qint64 userId=user.id;
         const qint64 orderId=data.value("orderId").toVariant().toLongLong();
         if (userId<=0) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
@@ -342,7 +348,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        qInfo() << "cancel order request: from userId:" << userId <<" orderId:" << orderId;
+        qInfo() << "cancel order request: from username:" << user.username <<" orderId:" << orderId;
 
         DBResult res=db.cancelOrder(userId,orderId,&errMsg);
         if(res == DBResult::Success)
