@@ -18,6 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    setWindowTitle("航班订票系统");
+
     auto bindPage = [&](QWidget* tabContainer, QWidget* page){
         if (!tabContainer->layout())
             tabContainer->setLayout(new QVBoxLayout(tabContainer));

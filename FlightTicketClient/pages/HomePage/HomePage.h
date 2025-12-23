@@ -20,8 +20,13 @@ signals:
     void requestGoOrders();
     void requestGoProfile();
 
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+
 private:
     Ui::HomePage *ui;
+
+    QPixmap m_src; // 主页图原图
 };
 
 #endif // HOMEPAGE_H

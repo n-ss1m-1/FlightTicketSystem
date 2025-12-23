@@ -86,3 +86,6 @@ CMakeLists.txt.user*
 FlightTicketClient/.qtcreator/FlightTicketClient.pro.user
 FlightTicketServer/.qtcreator/FlightTicketServer.pro.user
 *.user
+FlightTicketClient/.qtcreator/FlightTicketClient.pro.user
+FlightTicketServer/.qtcreator/FlightTicketServer.pro.user
+FlightTicketServer/.qtcreator/FlightTicketServer.pro.user
