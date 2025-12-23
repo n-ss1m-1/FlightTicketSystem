@@ -1,6 +1,7 @@
 #include "FlightServer.h"
 #include "ClientHandler.h"
 #include <QTcpSocket>
+
 #include <QDebug>
 
 FlightServer::FlightServer(QObject *parent)
@@ -28,3 +29,5 @@ void FlightServer::onNewConnection()
         new ClientHandler(socket, this); // 断开时自销毁
     }
 }
+
+

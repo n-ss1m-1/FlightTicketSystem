@@ -64,6 +64,9 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         // 2. 校验结果 (DBResult::Success 且 密码匹配)
         // 注意：这里假设数据库里存的是明文密码，实际开发通常要加密，但作业可以直接比对
         if (res == DBResult::Success && user.password == password) {
+            // 保存用户信息到当前连接
+            this->setUserInfo(user);
+
             // 登录成功，把用户信息回传给客户端
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_LOGIN_RESP, Common::userToJson(user), "登录成功"));
         } else {
@@ -207,7 +210,10 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     {
         //需要客户端传入：user_id,flight_id,passenger_name,passenger_id_card (可以使用一个user给多个不同的passenger创建订单？)
         Common::OrderInfo order;
-        order.userId=data.value("userId").toVariant().toLongLong();
+        const QString username=data.value("username").toString();
+        Common::UserInfo user;
+        db.getUserByUsername(username,user,&errMsg);
+        order.userId=user.id;
         order.flightId=data.value("flightId").toVariant().toLongLong();
         order.passengerName=data.value("passengerName").toString();
         order.passengerIdCard=data.value("passengerIdCard").toString();
@@ -227,6 +233,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "乘客IdCard不能为空"));
             return;
         }
+
+        qInfo() << "create order request: from userId:" << order.userId << "flightId" << order.flightId << "passengerName" << order.passengerName << "passengerIdCard" <<order.passengerIdCard;
 
         DBResult res=db.createOrder(order,&errMsg);
         if(res == DBResult::Success)
@@ -251,6 +259,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
             return;
         }
+
+        qInfo() << "search orders request: from userId:" << userId;
 
         QList<Common::OrderInfo> orders;
         DBResult res=db.getOrdersByUserId(userId,orders,&errMsg);
@@ -281,6 +291,8 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "orderid不能<=0"));
             return;
         }
+
+        qInfo() << "cancel order request: from userId:" << userId <<" orderId:" << orderId;
 
         DBResult res=db.cancelOrder(userId,orderId,&errMsg);
         if(res == DBResult::Success)
@@ -313,7 +325,10 @@ void ClientHandler::sendJson(const QJsonObject &obj)
 
 void ClientHandler::onDisconnected()
 {
-    qInfo() << "Client disconnected";
+    qInfo() << "Client disconnected"<<m_socket->peerAddress().toString();
+    //从在线用户列表中移除
+    OnlineUsesrManager::instance().removeOnlineUser
+    //销毁连接和自身
     m_socket->deleteLater();
     deleteLater();
 }

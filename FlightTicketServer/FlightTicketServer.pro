@@ -12,12 +12,14 @@ SOURCES += \
     ClientHandler.cpp \
     DBManager.cpp \
     FlightServer.cpp \
+    OnlineUserManager.cpp \
     main.cpp
 
 HEADERS += \
     ClientHandler.h \
     DBManager.h \
-    FlightServer.h
+    FlightServer.h \
+    OnlineUserManager.h
 
 FORMS +=
 
