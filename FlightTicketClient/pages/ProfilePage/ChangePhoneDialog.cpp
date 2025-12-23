@@ -48,7 +48,7 @@ bool ChangePhoneDialog::validatePhone()
         return false;
     }
 
-    static const QRegularExpression re(R"(^\d{11}$)");
+    static const QRegularExpression re(R"(^1[3-9]\\d{9}$)");
     if (!re.match(phone).hasMatch()) {
         ui->lblErrPhone->setText("无效的手机号");
         setLineEditState(ui->leNewPhone, false);
