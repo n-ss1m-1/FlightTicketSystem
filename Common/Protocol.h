@@ -37,6 +37,14 @@ static const QString TYPE_ERROR = "error";
 static const QString TYPE_LOGIN      = "login";
 static const QString TYPE_LOGIN_RESP = "login_response";
 
+// ======================== 常用乘机人管理 ============================
+static const QString TYPE_PASSENGER_GET ="passenger_get";
+static const QString TYPE_PASSENGER_GET_RESP ="passenger_get_response";
+static const QString TYPE_PASSENGER_ADD ="passenger_add";
+static const QString TYPE_PASSENGER_ADD_RESP ="passenger_add_response";
+static const QString TYPE_PASSENGER_DEL ="passenger_del";
+static const QString TYPE_PASSENGER_DEL_RESP ="passenger_del_response";
+
 // ======================== 退出登录 ============================
 static const QString TYPE_LOGOUT      = "logout";
 static const QString TYPE_LOGOUT_RESP = "logout_response";
