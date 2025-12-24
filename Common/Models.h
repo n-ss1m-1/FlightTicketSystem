@@ -91,6 +91,13 @@ struct UserInfo {
     QString idCard;                // 身份证号
 };
 
+// 常用乘机人信息
+struct PassengerInfo {
+    qint64 id = 0;                  // 常用乘机人ID 主键
+    QString name;                   // 姓名
+    QString idCard;                 // 身份证号
+};
+
 // 订单信息
 struct OrderInfo {
     qint64 id = 0;                 // 订单ID（数据库主键）
@@ -181,6 +188,43 @@ inline UserInfo userFromJson(const QJsonObject &o)
     u.realName = o.value("realName").toString();
     u.idCard = o.value("idCard").toString();
     return u;
+}
+
+// -------- 常用乘机人 PassengerInfo <-> JSON --------
+inline QJsonObject passengerToJson(const PassengerInfo &ord)
+{
+    QJsonObject o;
+    o.insert("id", static_cast<qint64>(ord.id));
+    putIfNotEmpty(o, "name", ord.name);
+    putIfNotEmpty(o, "idCard", ord.idCard);
+    return o;
+}
+
+inline PassengerInfo passengerFromJson(const QJsonObject &o)
+{
+    PassengerInfo ord;
+    ord.id = static_cast<qint64>(o.value("id").toVariant().toLongLong());
+    ord.name = o.value("name").toString();
+    ord.idCard = o.value("idCard").toString();
+
+    return ord;
+}
+
+inline QJsonArray passengersToJsonArray(const QList<PassengerInfo> &list)
+{
+    QJsonArray arr;
+    for (const auto &o : list) arr.append(passengerToJson(o));
+    return arr;
+}
+
+inline QList<PassengerInfo> passengersFromJsonArray(const QJsonArray &arr)
+{
+    QList<PassengerInfo> list;
+    list.reserve(arr.size());
+    for (const auto &v : arr) {
+        if (v.isObject()) list.push_back(passengerFromJson(v.toObject()));
+    }
+    return list;
 }
 
 // -------- 订单 OrderInfo <-> JSON --------
