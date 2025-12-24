@@ -101,6 +101,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         userManager.removeOnlineUser(this);
 
         sendJson(Protocol::makeOkResponse(Protocol::TYPE_LOGOUT_RESP, QJsonObject(), "退出登陆成功"));
+        return;
     }
 
     //注册

@@ -131,11 +131,44 @@ void ProfilePage::on_btnLogin_clicked()
         box.exec();
 
         if (box.clickedButton() == btnLogout) {
-            m_loggedIn = false;
-            NetworkManager::instance()->m_username.clear();
-            m_userJson = QJsonObject();
-            updateUserInfoUI();
-            updateLoginUI();
+            ui->btnLogin->setEnabled(false);
+
+            QJsonObject req;
+            req.insert(Protocol::KEY_TYPE, Protocol::TYPE_LOGOUT);
+
+            QJsonObject data;
+            data.insert("username", NetworkManager::instance()->m_username);
+            req.insert(Protocol::KEY_DATA, data);
+
+            auto *nm = NetworkManager::instance();
+            auto *conn = new QMetaObject::Connection;
+            *conn = connect(nm, &NetworkManager::jsonReceived, this,
+                [this, conn](const QJsonObject &resp) {
+                    const QString type = resp.value(Protocol::KEY_TYPE).toString();
+
+                    if (type != Protocol::TYPE_LOGOUT_RESP && type != Protocol::TYPE_ERROR)
+                        return;
+
+                    disconnect(*conn);
+                    delete conn;
+
+                    const bool success = resp.value(Protocol::KEY_SUCCESS).toBool();
+                    const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
+
+                    if (type == Protocol::TYPE_LOGOUT_RESP && success) {
+                        m_loggedIn = false;
+                        NetworkManager::instance()->m_username.clear();
+                        m_userJson = QJsonObject();
+                        updateUserInfoUI();
+                        updateLoginUI();
+                    } else {
+                        // 失败保持当前登录
+                        QMessageBox::warning(this, "退出登录失败", msg.isEmpty() ? "退出登录失败" : msg);
+                    }
+                    ui->btnLogin->setEnabled(true);
+                });
+
+            nm->sendJson(req);
         }
         return;
     }
