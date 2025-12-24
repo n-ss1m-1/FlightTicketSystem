@@ -55,7 +55,7 @@ ProfilePage::~ProfilePage()
 
 void ProfilePage::updateLoginUI()
 {
-    if (m_loggedIn) {
+    if (NetworkManager::instance()->isLoggedIn()) {
         ui->btnLogin->setText("退出登录");
         ui->lblStatus->setText("已登录：" + NetworkManager::instance()->m_username);
         ui->btnRegister->setText("修改密码");
@@ -68,7 +68,7 @@ void ProfilePage::updateLoginUI()
 
 void ProfilePage::updateUserInfoUI()
 {
-    if (!m_loggedIn) {
+    if (!NetworkManager::instance()->isLoggedIn()) {
         ui->lblPhoneValue->setText("-");
         ui->lblRealNameValue->setText("-");
         ui->lblIdCardValue->setText("-");
@@ -117,7 +117,7 @@ void ProfilePage::applyPrivacyMask()
 void ProfilePage::on_btnLogin_clicked()
 {
     // 已登录：退出登录
-    if (m_loggedIn) {
+    if (NetworkManager::instance()->isLoggedIn()) {
         QMessageBox box(this);
         box.setWindowTitle("确认退出");
         box.setText("确定要退出登录吗？");
@@ -156,7 +156,7 @@ void ProfilePage::on_btnLogin_clicked()
                     const QString msg = resp.value(Protocol::KEY_MESSAGE).toString();
 
                     if (type == Protocol::TYPE_LOGOUT_RESP && success) {
-                        m_loggedIn = false;
+                        NetworkManager::instance()->setLoggedIn(false);
                         NetworkManager::instance()->m_username.clear();
                         m_userJson = QJsonObject();
                         updateUserInfoUI();
@@ -193,7 +193,7 @@ void ProfilePage::on_btnLogin_clicked()
                     const QJsonObject data = resp.value(Protocol::KEY_DATA).toObject();
 
                     if (success) {
-                        m_loggedIn = true;
+                        NetworkManager::instance()->setLoggedIn(true);
 
                         NetworkManager::instance()->m_username = data.value("username").toString();
 
@@ -222,7 +222,7 @@ void ProfilePage::on_btnLogin_clicked()
 void ProfilePage::on_btnRegister_clicked()
 {
     // 未登录：注册
-    if (!m_loggedIn) {
+    if (!NetworkManager::instance()->isLoggedIn()) {
         auto *dlg = new RegisterDialog(this);
         dlg->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -298,7 +298,7 @@ void ProfilePage::on_btnRegister_clicked()
 
 void ProfilePage::on_btnChangePhone_clicked()
 {
-    if (!m_loggedIn) {
+    if (!NetworkManager::instance()->isLoggedIn()) {
         QMessageBox::warning(this, "提示", "请先登录");
         return;
     }
@@ -362,18 +362,18 @@ void ProfilePage::on_btnChangePhone_clicked()
 
 void ProfilePage::on_cbShowPhone_toggled(bool)
 {
-    if (m_loggedIn) applyPrivacyMask();
+    if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
 
 void ProfilePage::on_cbShowRealName_toggled(bool)
 {
-    if (m_loggedIn) applyPrivacyMask();
+    if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
 void ProfilePage::on_cbShowIdCard_toggled(bool)
 {
-    if (m_loggedIn) applyPrivacyMask();
+    if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
 

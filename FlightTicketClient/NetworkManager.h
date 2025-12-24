@@ -25,7 +25,11 @@ public:
                       const QString& phone, const QString& realName, const QString& idCard); // 注册
     void changePassword(const QString& username, const QString& oldPwd, const QString& newPwd); // 修改密码
 
+    bool isLoggedIn() const;
+    void setLoggedIn(bool loggedIn);
+
     QString m_username = "";
+
 signals:
     void connected();
     void disconnected();
@@ -33,6 +37,7 @@ signals:
     void errorOccurred(const QString &msg);
     void notConnected(); // sendJson()未连接时触发弹窗
     void reconnectRequested();
+    void loginStateChanged(bool loggedIn); // 登录状态改变
 
 private slots:
     void onReadyRead();
@@ -50,6 +55,8 @@ private:
 
     QString m_host;
     quint16 m_port = 0;
+
+    bool m_loggedIn = false;
 };
 
 #endif // NETWORKMANAGER_H

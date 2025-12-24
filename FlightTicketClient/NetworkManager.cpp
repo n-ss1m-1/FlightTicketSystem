@@ -145,3 +145,18 @@ void NetworkManager::onError(QAbstractSocket::SocketError err) {
     }
     emit errorOccurred(m_socket.errorString());
 }
+
+bool NetworkManager::isLoggedIn() const
+{
+    return m_loggedIn;
+}
+
+void NetworkManager::setLoggedIn(bool loggedIn)
+{
+    if (m_loggedIn == loggedIn)
+        return;
+
+    m_loggedIn = loggedIn;
+    emit loginStateChanged(m_loggedIn);
+}
+

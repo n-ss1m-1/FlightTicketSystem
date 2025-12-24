@@ -32,7 +32,7 @@ private slots:
 private:
     Ui::ProfilePage *ui;
 
-    bool m_loggedIn = false; // 登录状态
+    // bool m_loggedIn = false;
     // QString m_username; // 移至 NetworkManager
     QJsonObject m_userJson; // 记录用户信息
 
