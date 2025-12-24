@@ -88,11 +88,11 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
 {
     QString type = obj.value(Protocol::KEY_TYPE).toString();
 
-    // 如果返回的是错误类型
-    if (type == Protocol::TYPE_ERROR) {
-        QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
-        return;
-    }
+    // // 如果返回的是错误类型
+    // if (type == Protocol::TYPE_ERROR) {
+    //     QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+    //     return;
+    // }
 
     // 处理查询结果
     if (type == Protocol::TYPE_FLIGHT_SEARCH_RESP) {

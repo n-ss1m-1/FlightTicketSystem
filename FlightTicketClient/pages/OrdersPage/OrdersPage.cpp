@@ -80,11 +80,11 @@ void OrdersPage::on_btnCancel_clicked() {
 void OrdersPage::onJsonReceived(const QJsonObject &obj) {
     QString type = obj.value(Protocol::KEY_TYPE).toString();
 
-    // 统一处理错误响应
-    if (type == Protocol::TYPE_ERROR) {
-        QMessageBox::warning(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
-        return;
-    }
+    // // 统一处理错误响应
+    // if (type == Protocol::TYPE_ERROR) {
+    //     QMessageBox::warning(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+    //     return;
+    // }
 
     // 处理订单列表回复
     if (type == Protocol::TYPE_ORDER_LIST_RESP) {
