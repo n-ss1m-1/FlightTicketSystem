@@ -2,6 +2,7 @@
 #define HOMEPAGE_H
 
 #include <QWidget>
+#include "pages/ProfilePage/ProfilePage.h"
 
 namespace Ui {
 class HomePage;
@@ -15,6 +16,8 @@ public:
     explicit HomePage(QWidget *parent = nullptr);
     ~HomePage();
 
+    ProfilePage* m_profilePage;
+
 signals:
     void requestGoFlights();
     void requestGoOrders();
@@ -27,6 +30,7 @@ private:
     Ui::HomePage *ui;
 
     QPixmap m_src; // 主页图原图
+    void updateLoginButton();
 };
 
 #endif // HOMEPAGE_H

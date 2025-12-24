@@ -1,6 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "pages/FlightsPage/FlightsPage.h"
+#include "pages/HomePage/HomePage.h"
+#include "pages/OrdersPage/OrdersPage.h"
+#include "pages/ProfilePage/ProfilePage.h"
 #include <QMainWindow>
 
 namespace Ui {
@@ -19,6 +23,13 @@ private:
     Ui::MainWindow *ui;
     bool m_reconnectDialogShowing = false; // 正在弹出网络重连窗口
     bool m_reconnectPending = false; // 正在重连
+
+    HomePage* homePage;
+    FlightsPage* flightsPage;
+    OrdersPage* ordersPage;
+    ProfilePage* profilePage;
+
+    void updateTab();
 };
 
 #endif // MAINWINDOW_H

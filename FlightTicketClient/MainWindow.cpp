@@ -1,9 +1,5 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
-#include "pages/FlightsPage/FlightsPage.h"
-#include "pages/HomePage/HomePage.h"
-#include "pages/OrdersPage/OrdersPage.h"
-#include "pages/ProfilePage/ProfilePage.h"
 #include "NetworkManager.h"
 #include <QMessageBox>
 #include <QVBoxLayout>
@@ -27,10 +23,11 @@ MainWindow::MainWindow(QWidget *parent)
         tabContainer->layout()->addWidget(page);
     };
 
-    HomePage* homePage = new HomePage(this);
-    FlightsPage* flightsPage = new FlightsPage(this);
-    OrdersPage* ordersPage = new OrdersPage(this);
-    ProfilePage* profilePage = new ProfilePage(this);
+    homePage = new HomePage(this);
+    flightsPage = new FlightsPage(this);
+    ordersPage = new OrdersPage(this);
+    profilePage = new ProfilePage(this);
+    homePage->m_profilePage = profilePage;
 
     // 绑定到容器
     bindPage(ui->tabHome, homePage);
@@ -42,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->tabWidget->setCurrentIndex(1);
     });
 
-    connect(homePage, &HomePage::requestGoOrders, [this, ordersPage](){
+    connect(homePage, &HomePage::requestGoOrders, [this](){
         ordersPage->loadOrders();
         ui->tabWidget->setCurrentIndex(2);
     });
@@ -50,6 +47,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(homePage, &HomePage::requestGoProfile, [this](){
         ui->tabWidget->setCurrentIndex(3);
     });
+
+    connect(NetworkManager::instance(),
+            &NetworkManager::loginStateChanged,
+            this,
+            &MainWindow::updateTab);
+
+    updateTab();
 
     // 网络
     auto nm = NetworkManager::instance();
@@ -104,4 +108,15 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::updateTab()
+{
+    bool loggedIn = NetworkManager::instance()->isLoggedIn();
+    ui->tabWidget->setTabEnabled(1, loggedIn);
+    ui->tabWidget->setTabEnabled(2, loggedIn);
+    auto currentPage = ui->tabWidget->currentWidget();
+    if(currentPage == flightsPage || currentPage == ordersPage){
+        ui->tabWidget->setCurrentWidget(homePage);
+    }
 }

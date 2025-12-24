@@ -376,4 +376,7 @@ void ProfilePage::on_cbShowIdCard_toggled(bool)
     if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
-
+void ProfilePage::requestLogin()
+{
+    on_btnLogin_clicked();
+}

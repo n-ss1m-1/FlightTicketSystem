@@ -29,6 +29,9 @@ private slots:
 
     void on_btnChangePhone_clicked();
 
+public slots:
+    void requestLogin(); // 其他页面调用登录
+
 private:
     Ui::ProfilePage *ui;
 

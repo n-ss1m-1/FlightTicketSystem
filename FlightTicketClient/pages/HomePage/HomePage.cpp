@@ -1,5 +1,6 @@
 #include "HomePage.h"
 #include "ui_HomePage.h"
+#include "NetworkManager.h"
 
 HomePage::HomePage(QWidget *parent) :
     QWidget(parent),
@@ -19,6 +20,18 @@ HomePage::HomePage(QWidget *parent) :
     if (ui->btnGoProfile) {
         connect(ui->btnGoProfile, &QPushButton::clicked, this, &HomePage::requestGoProfile);
     }
+
+    updateLoginButton();
+
+    // 监听登录状态变化
+    connect(NetworkManager::instance(),
+            &NetworkManager::loginStateChanged,
+            this,
+            &HomePage::updateLoginButton);
+
+    connect(ui->btnLogin, &QPushButton::clicked, this, [this](){
+        m_profilePage->requestLogin();
+    });
 }
 
 HomePage::~HomePage()
@@ -38,4 +51,11 @@ void HomePage::resizeEvent(QResizeEvent *event)
 
     ui->lblHomeImage->setAlignment(Qt::AlignCenter);
     ui->lblHomeImage->setPixmap(scaled);
+}
+
+void HomePage::updateLoginButton()
+{
+    bool loggedIn = NetworkManager::instance()->isLoggedIn();
+    ui->loginWidget->setVisible(!loggedIn);
+    ui->contentWidget->setVisible(loggedIn);
 }
