@@ -25,6 +25,7 @@ OrdersPage::OrdersPage(QWidget *parent) :
     // 连接网络信号
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived,
             this, &OrdersPage::onJsonReceived);
+
 }
 
 OrdersPage::~OrdersPage() {
