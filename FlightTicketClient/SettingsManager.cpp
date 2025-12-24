@@ -10,24 +10,6 @@
 double SettingsManager::minScale = 0.5;
 double SettingsManager::maxScale = 2.0;
 
-static QPalette makeDarkPalette()
-{
-    QPalette p;
-    p.setColor(QPalette::Window, QColor(30,30,30));
-    p.setColor(QPalette::WindowText, Qt::white);
-    p.setColor(QPalette::Base, QColor(20,20,20));
-    p.setColor(QPalette::AlternateBase, QColor(35,35,35));
-    p.setColor(QPalette::ToolTipBase, Qt::white);
-    p.setColor(QPalette::ToolTipText, Qt::white);
-    p.setColor(QPalette::Text, Qt::white);
-    p.setColor(QPalette::Button, QColor(45,45,45));
-    p.setColor(QPalette::ButtonText, Qt::white);
-    p.setColor(QPalette::BrightText, Qt::red);
-    p.setColor(QPalette::Highlight, QColor(90,140,250));
-    p.setColor(QPalette::HighlightedText, Qt::white);
-    return p;
-}
-
 SettingsManager& SettingsManager::instance()
 {
     static SettingsManager inst;
@@ -65,25 +47,18 @@ void SettingsManager::applyAll()
 
 void SettingsManager::applyTheme()
 {
-    auto applyLight = [](){
-        qApp->setPalette(qApp->style()->standardPalette());
-    };
-    auto applyDark = [](){
-        qApp->setPalette(makeDarkPalette());
-    };
+    auto *h = QGuiApplication::styleHints();
 
-    switch (m_theme)
-    {
+    switch (m_theme) {
     case ThemeMode::Light:
-        applyLight();
+        h->setColorScheme(Qt::ColorScheme::Light);
         break;
     case ThemeMode::Dark:
-        applyDark();
+        h->setColorScheme(Qt::ColorScheme::Dark);
         break;
     case ThemeMode::System:
     default:
-        if (qApp->styleHints()->colorScheme() == Qt::ColorScheme::Dark) applyDark();
-        else applyLight();
+        h->unsetColorScheme();
         break;
     }
 }

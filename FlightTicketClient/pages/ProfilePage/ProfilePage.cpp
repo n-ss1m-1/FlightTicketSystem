@@ -18,8 +18,8 @@ ProfilePage::ProfilePage(QWidget *parent)
 
     ui->comboTheme->clear();
     ui->comboTheme->addItem("跟随系统", (int)SettingsManager::ThemeMode::System);
-    ui->comboTheme->addItem("浅色",     (int)SettingsManager::ThemeMode::Light);
-    ui->comboTheme->addItem("深色",     (int)SettingsManager::ThemeMode::Dark);
+    ui->comboTheme->addItem("浅色", (int)SettingsManager::ThemeMode::Light);
+    ui->comboTheme->addItem("深色", (int)SettingsManager::ThemeMode::Dark);
 
     auto &sm = SettingsManager::instance();
 
