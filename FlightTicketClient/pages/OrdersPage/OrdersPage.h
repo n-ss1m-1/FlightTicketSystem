@@ -15,7 +15,11 @@ public:
     explicit OrdersPage(QWidget *parent = nullptr);
     ~OrdersPage();
 
-    void loadOrders(); // 公有方法：供外部调用刷新数据
+    void loadOrders(); // 公有刷新方法
+
+protected:
+    // 重写显示事件，实现自动刷新
+    void showEvent(QShowEvent *event) override;
 
 private slots:
     void on_btnRefresh_clicked();
