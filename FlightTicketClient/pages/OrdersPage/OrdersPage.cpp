@@ -96,7 +96,7 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj) {
     QString type = obj.value(Protocol::KEY_TYPE).toString();
 
     if (type == Protocol::TYPE_ERROR) {
-        QMessageBox::warning(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+        // QMessageBox::warning(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
         return;
     }
 
