@@ -27,7 +27,8 @@ public:
     QList<Common::UserInfo> getAllUsers();
 
 private:
-    OnlineUserManager() = default;
+    OnlineUserManager()=default;
+    OnlineUserManager& operator=(const OnlineUserManager&)=delete;
     QMap<ClientHandler*, Common::UserInfo> m_users;  //连接->用户信息映射
 
 };
