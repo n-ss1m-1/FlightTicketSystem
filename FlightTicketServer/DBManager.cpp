@@ -187,6 +187,8 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
     order.priceCents=query.value("price_cents").toInt();
     order.status=static_cast<Common::OrderStatus>(query.value("status").toInt());
 
+    order.createdTime = query.value("created_time").toDateTime();
+
     return order;
 }
 
