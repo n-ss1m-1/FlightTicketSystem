@@ -81,6 +81,27 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         return;
     }
+    //退出登陆
+    else if(type == Protocol::TYPE_LOGOUT)
+    {
+        //先判断是否真正登陆
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        //获取用户信息--打印日志
+        const QString username=userManager.getUserInfoByHandler(this).username;
+        qInfo() << "logout request:" << username;
+
+        //设置状态 清空用户信息 移出用户表
+        this->isLogin=false;
+        this->m_userInfo=Common::UserInfo();
+        userManager.removeOnlineUser(this);
+
+        sendJson(Protocol::makeOkResponse(Protocol::TYPE_LOGOUT_RESP, QJsonObject(), "退出登陆成功"));
+    }
 
     //注册
     else if (type == Protocol::TYPE_REGISTER) {

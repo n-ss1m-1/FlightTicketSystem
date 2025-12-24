@@ -37,6 +37,10 @@ static const QString TYPE_ERROR = "error";
 static const QString TYPE_LOGIN      = "login";
 static const QString TYPE_LOGIN_RESP = "login_response";
 
+// ======================== 退出登录 ============================
+static const QString TYPE_LOGOUT      = "logout";
+static const QString TYPE_LOGOUT_RESP = "logout_response";
+
 // ======================== 用户管理  ========================
 static const QString TYPE_REGISTER      = "register";
 static const QString TYPE_REGISTER_RESP = "register_response";
