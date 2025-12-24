@@ -218,6 +218,12 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     //根据出发地+目的地+日期查询航班
     else if(type == Protocol::TYPE_FLIGHT_SEARCH)
     {
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
         const QString fromCity=data.value("fromCity").toString();
         const QString toCity=data.value("toCity").toString();
         const QDate date=QDate::fromString(data.value("date").toString(), Qt::ISODate);
@@ -386,10 +392,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
     }
 
     // 未知请求
-    sendJson(Protocol::makeFailResponse(
-        Protocol::TYPE_ERROR,
-        "Unknown request type: " + type
-        ));
+    else sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"Unknown request type: " + type));
 }
 
 void ClientHandler::sendJson(const QJsonObject &obj)
