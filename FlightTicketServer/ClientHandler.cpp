@@ -79,7 +79,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "账号或密码错误"));
         }
-        return;
     }
     //退出登陆
     else if(type == Protocol::TYPE_LOGOUT)
@@ -101,7 +100,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         userManager.removeOnlineUser(this);
 
         sendJson(Protocol::makeOkResponse(Protocol::TYPE_LOGOUT_RESP, QJsonObject(), "退出登陆成功"));
-        return;
     }
 
     //注册
@@ -133,7 +131,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical() << "Register DB Error:" << errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败，数据库错误"));
         }
-        return;
     }
 
     //修改密码
@@ -171,7 +168,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码修改失败"));
         }
-        return;
     }
     //根据用户名修改电话号码
     else if(type == Protocol::TYPE_CHANGE_PHONE)
@@ -213,7 +209,89 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical()<<"phone change error:"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"电话号码修改失败"));
         }
-        return;
+    }
+    //查询常用乘机人
+    else if(type == Protocol::TYPE_PASSENGER_GET)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        QList<Common::PassengerInfo> passengers;
+
+        qInfo()<<"Get Passengers request: user:"<<user.username;
+
+        DBResult res=db.getPassengers(user.id,passengers,&errMsg);
+
+        if(res == DBResult::Success)
+        {
+            QJsonArray passengerArr = Common::passengersToJsonArray(passengers);
+            QJsonObject respData;
+            respData.insert("passengers",passengerArr);
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,respData,QString("查询到%1个常用乘机人").arg(passengers.size())));
+        }
+        else
+        {
+            qCritical()<<"passengers get error:"<<errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败"+errMsg));
+        }
+    }
+    //添加常用乘机人 需要传入添加的乘机人的姓名和身份证号
+    else if(type == Protocol::TYPE_PASSENGER_ADD)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const QString passenger_name=data.value("passenger_name").toString();
+        const QString passenger_id_card=data.value("passenger_id_card").toString();
+
+        qInfo()<<"Add Passenger request: user:"<<user.username<<" to add passenger:"<<passenger_name<<"("<<passenger_id_card<<")";
+
+        DBResult res=db.addPassenger(user.id,passenger_name,passenger_id_card,&errMsg);
+        if(res == DBResult::Success)
+        {
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,QJsonObject(),QString("添加常用乘机人成功")));
+        }
+        else
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_PASSENGER_GET_RESP,QString("添加常用乘机人失败")));
+        }
+
+    }
+    //删除常用乘机人 需要传入添加的乘机人的姓名和身份证号
+    else if(type == Protocol::TYPE_PASSENGER_DEL)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const QString passenger_name=data.value("passenger_name").toString();
+        const QString passenger_id_card=data.value("passenger_id_card").toString();
+
+        qInfo()<<"Delete Passenger request: user:"<<user.username<<" to delete passenger:"<<passenger_name<<"("<<passenger_id_card<<")";
+
+        DBResult res=db.delPassenger(passenger_name,passenger_id_card,&errMsg);
+        if(res == DBResult::Success)
+        {
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,QJsonObject(),QString("删除常用乘机人成功")));
+        }
+        else
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_PASSENGER_GET_RESP,QString("删除常用乘机人失败")));
+        }
     }
     //根据出发地+目的地+日期查询航班
     else if(type == Protocol::TYPE_FLIGHT_SEARCH)
@@ -264,7 +342,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical()<<"flight search error:"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"航班查询失败"+errMsg));
         }
-        return;
     }
     //创建订单
     else if(type == Protocol::TYPE_ORDER_CREATE)
@@ -317,7 +394,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical()<<"order create error:"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单创建失败"+errMsg));
         }
-        return;
     }
     //查询用户所有订单(根据userId)
     else if(type == Protocol::TYPE_ORDER_LIST)
@@ -352,7 +428,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical()<<"order search error:"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败"+errMsg));
         }
-        return;
     }
     //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)
@@ -388,7 +463,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             qCritical()<<"order cancel error"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单取消失败"+errMsg));
         }
-        return;
     }
 
     // 未知请求

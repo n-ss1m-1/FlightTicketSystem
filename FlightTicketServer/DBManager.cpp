@@ -159,6 +159,14 @@ Common::UserInfo DBManager::userFromQuery(const QSqlQuery& query)
 
     return user;
 }
+Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query)
+{
+    Common::PassengerInfo passenger;
+    passenger.id=query.value("id").toLongLong();
+    passenger.name=query.value("name").toString();
+    passenger.idCard=query.value("idCard").toString();
+    return passenger;
+}
 Common::FlightInfo DBManager::flightFromQuery(const QSqlQuery& query)
 {
     Common::FlightInfo flight;
@@ -186,6 +194,9 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
     order.seatNum=query.value("seat_num").toString();
     order.priceCents=query.value("price_cents").toInt();
     order.status=static_cast<Common::OrderStatus>(query.value("status").toInt());
+    
+    order.createdTime = query.value("created_time").toDateTime();
+
 
     return order;
 }
@@ -267,6 +278,82 @@ DBResult DBManager::updatePhoneByUsername(const QString& username,const QString&
         return DBResult::updateFailed;
     }
     return DBResult::Success;
+}
+DBResult DBManager::addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
+{
+    //1.插入乘机人表
+    QString passengerSql="insert into passenger (name,id_card) values(?,?,?)";
+    QList<QVariant> passengerParams;
+    passengerParams<<passenger_name<<passenger_id_card;
+
+    QSqlQuery passengerQuery(db);
+    if(!passengerQuery.prepare(passengerSql))
+    {
+        if(errMsg) *errMsg="SQL prepare failed: "+passengerQuery.lastError().text();
+        qWarning()<<"SQL prepare failed: "<<passengerSql<<"Error:"<<passengerQuery.lastError().text();
+    }
+
+    for(int i=0; i<passengerParams.size();i++)
+    {
+        passengerQuery.bindValue(i, passengerParams[i]);  //位置绑定
+    }
+
+    if(!passengerQuery.exec())
+    {
+        if(errMsg)
+        {
+            *errMsg="sql exec failed: "+passengerQuery.lastError().text();
+            qWarning()<<"sql exec failed: "<<passengerSql<<"Error:"<<passengerQuery.lastError().text();
+        }
+    }
+    if(passengerQuery.numRowsAffected()<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"电话号码更改失败";
+        return DBResult::updateFailed;
+    }
+
+    //2.查找乘机人ID
+    QVariant passenger_id = passengerQuery.lastInsertId();
+
+    //3.插入user_passenger关联表
+    QString U_P_sql="insert into user_passenger (user_id,passenger_id) values(?,?)";
+    QList<QVariant> U_P_params;
+    U_P_params<<user_id<<passenger_id;
+
+    int sqlAffected=update(U_P_sql,U_P_params,errMsg);
+    if(sqlAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"加入乘机人失败";
+        return DBResult::updateFailed;
+    }
+
+    return DBResult::Success;
+}
+DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg)
+{
+    QString sql="select p.* "
+                  "from user_passenger up "
+                  "inner join user u on up.user_id=u.id "
+                  "inner join passenger p on up.passenger_id=p.id"
+                  "where u.id=user_id";
+    QList<QVariant>params;
+    params<<user_id;
+
+    //执行sql
+    QSqlQuery query=Query(sql,params,errMsg);
+    if(!query.isActive())
+    {
+        return DBResult::QueryFailed;
+    }
+
+    //遍历结果集
+    passengers.clear();
+    while(query.next())     //初始位置：-1
+    {
+        passengers.append(passengerFromQuery(query));
+    }
+
+    return passengers.isEmpty()? DBResult::NoData : DBResult::Success;
 }
 
 //航班                    //flights作为传出参数

@@ -58,6 +58,8 @@ public:
     DBResult addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg);
     DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg);
     DBResult updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg);
+    DBResult addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
+    DBResult getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg);
     //航班                    //flights作为传出参数
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
@@ -78,6 +80,7 @@ private:
     Common::UserInfo userFromQuery(const QSqlQuery& query);
     Common::FlightInfo flightFromQuery(const QSqlQuery& query);
     Common::OrderInfo orderFromQuery(const QSqlQuery& query);
+    Common::PassengerInfo passengerFromQuery(const QSqlQuery& query);
 };
 
 
