@@ -234,6 +234,10 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             respData.insert("passengers",passengerArr);
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,respData,QString("查询到%1个常用乘机人").arg(passengers.size())));
         }
+        else if(res == DBResult::NoData)
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无常用乘机人"+errMsg));
+        }
         else
         {
             qCritical()<<"passengers get error:"<<errMsg;
@@ -259,11 +263,11 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         DBResult res=db.addPassenger(user.id,passenger_name,passenger_id_card,&errMsg);
         if(res == DBResult::Success)
         {
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,QJsonObject(),QString("添加常用乘机人成功")));
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_ADD_RESP,QJsonObject(),QString("添加常用乘机人成功")));
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_PASSENGER_GET_RESP,QString("添加常用乘机人失败")));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("添加常用乘机人失败")));
         }
 
     }
@@ -286,11 +290,11 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         DBResult res=db.delPassenger(passenger_name,passenger_id_card,&errMsg);
         if(res == DBResult::Success)
         {
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_GET_RESP,QJsonObject(),QString("删除常用乘机人成功")));
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_DEL_RESP,QJsonObject(),QString("删除常用乘机人成功")));
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_PASSENGER_GET_RESP,QString("删除常用乘机人失败")));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败")));
         }
     }
     //根据出发地+目的地+日期查询航班

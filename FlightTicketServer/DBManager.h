@@ -59,6 +59,7 @@ public:
     DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg);
     DBResult updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg);
     DBResult addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
+    DBResult delPassenger(const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
     DBResult getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg);
     //航班                    //flights作为传出参数
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);

@@ -329,6 +329,21 @@ DBResult DBManager::addPassenger(const qint64 user_id,const QString& passenger_n
 
     return DBResult::Success;
 }
+DBResult  DBManager::delPassenger(const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
+{
+    QString sql="delete from passenger where name=? and id_card=?";
+    QList<QVariant> params;
+    params<<passenger_name<<passenger_id_card;
+
+    int sqlAffected=update(sql,params,errMsg);
+    if(sqlAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+"删除乘机人失败";
+        return DBResult::updateFailed;
+    }
+
+    return DBResult::Success;
+}
 DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg)
 {
     QString sql="select p.* "
