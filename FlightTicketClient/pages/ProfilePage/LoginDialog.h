@@ -20,9 +20,13 @@ public:
 signals:
     void loginSubmitted(const QString &username, const QString &password);
 
+    void requestRegister();
+
 private slots:
     void on_btnLogin_clicked();
     void on_btnCancel_clicked();
+
+    void on_btnGoRegister_clicked();
 
 private:
     Ui::LoginDialog *ui;
