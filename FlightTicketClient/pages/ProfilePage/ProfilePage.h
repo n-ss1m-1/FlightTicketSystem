@@ -3,6 +3,7 @@
 
 #include <QWidget>
 #include <QJsonObject>
+#include "Common/Models.h"
 
 namespace Ui {
 class ProfilePage;
@@ -29,6 +30,10 @@ private slots:
 
     void on_btnChangePhone_clicked();
 
+    void on_btnAddPassenger_clicked();
+
+    void on_btnDelPassenger_clicked();
+
 public slots:
     void requestLogin(); // 其他页面调用登录
 
@@ -43,6 +48,18 @@ private:
     void updateUserInfoUI(); // 根据 m_userJson 填充/刷新显示
     void applyPrivacyMask(); // 根据 checkbox 显示/脱敏
     static QString maskMiddle(const QString& s, int left, int right, QChar ch='*');
+
+    QList<Common::PassengerInfo> m_passengers;
+    QMetaObject::Connection m_passengerConn; // 临时连接
+
+    void initPassengerTable();
+    void requestPassengers();                      // 拉取列表
+    void fillPassengerTable(const QList<Common::PassengerInfo>& list);
+
+    int currentPassengerRow() const;
+    Common::PassengerInfo passengerAtRow(int row) const;
+
+    bool validatePassengerInput(const QString& name, const QString& idCard, QString* err = nullptr) const;
 };
 
 #endif // PROFILEPAGE_H

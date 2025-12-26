@@ -8,13 +8,21 @@
 #include "ChangePhoneDialog.h"
 #include "SettingsManager.h"
 #include <QLineEdit>
+#include <QInputDialog>
 
 ProfilePage::ProfilePage(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::ProfilePage)
 {
     ui->setupUi(this);
+
     updateLoginUI();
+
+    initPassengerTable();
+
+    connect(ui->btnAddPassenger, &QPushButton::clicked, this, &ProfilePage::on_btnAddPassenger_clicked);
+    connect(ui->btnDelPassenger, &QPushButton::clicked, this, &ProfilePage::on_btnDelPassenger_clicked);
+
 
     ui->comboTheme->clear();
     ui->comboTheme->addItem("跟随系统", (int)SettingsManager::ThemeMode::System);
@@ -50,6 +58,7 @@ ProfilePage::ProfilePage(QWidget *parent)
 
 ProfilePage::~ProfilePage()
 {
+    if (m_passengerConn) QObject::disconnect(m_passengerConn);
     delete ui;
 }
 
@@ -161,6 +170,7 @@ void ProfilePage::on_btnLogin_clicked()
                         m_userJson = QJsonObject();
                         updateUserInfoUI();
                         updateLoginUI();
+                        requestPassengers();
                     } else {
                         // 失败保持当前登录
                         QMessageBox::warning(this, "退出登录失败", msg.isEmpty() ? "退出登录失败" : msg);
@@ -387,3 +397,221 @@ void ProfilePage::requestLogin()
 {
     on_btnLogin_clicked();
 }
+
+void ProfilePage::initPassengerTable()
+{
+    auto *t = ui->tablePassengers;
+    t->clear();
+    t->setColumnCount(3);
+    t->setHorizontalHeaderLabels({"ID", "姓名", "身份证号"});
+    t->setSelectionBehavior(QAbstractItemView::SelectRows);
+    t->setSelectionMode(QAbstractItemView::SingleSelection);
+    t->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    t->verticalHeader()->setVisible(false);
+
+    t->setColumnHidden(0, true);
+}
+
+void ProfilePage::requestPassengers()
+{
+    auto *nm = NetworkManager::instance();
+
+    if (m_passengerConn) QObject::disconnect(m_passengerConn);
+
+    m_passengerConn = connect(nm, &NetworkManager::jsonReceived, this,
+            [this](const QJsonObject &obj) {
+                const QString type = obj.value(Protocol::KEY_TYPE).toString();
+                if (type == Protocol::TYPE_ERROR) {
+                    QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+                    QObject::disconnect(m_passengerConn);
+                    m_passengerConn = {};
+                    return;
+                }
+
+                if (type != Protocol::TYPE_PASSENGER_GET_RESP) return;
+
+                const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
+                if (!ok) {
+                    QMessageBox::warning(this, "提示", obj.value(Protocol::KEY_MESSAGE).toString());
+                    QObject::disconnect(m_passengerConn);
+                    m_passengerConn = {};
+                    return;
+                }
+
+                QJsonObject data = obj.value(Protocol::KEY_DATA).toObject();
+                QJsonArray arr = data.value("passengers").toArray();
+
+                m_passengers = Common::passengersFromJsonArray(arr);
+                fillPassengerTable(m_passengers);
+
+                QObject::disconnect(m_passengerConn);
+                m_passengerConn = {};
+            });
+
+    QJsonObject req;
+    req.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_GET);
+    req.insert(Protocol::KEY_DATA, QJsonObject());
+    nm->sendJson(req);
+}
+
+void ProfilePage::fillPassengerTable(const QList<Common::PassengerInfo>& list)
+{
+    auto *t = ui->tablePassengers;
+    t->setRowCount(0);
+    t->setRowCount(list.size());
+
+    for (int i = 0; i < list.size(); ++i) {
+        const auto &p = list[i];
+
+        t->setItem(i, 0, new QTableWidgetItem(QString::number(p.id)));
+        t->setItem(i, 1, new QTableWidgetItem(p.name));
+        t->setItem(i, 2, new QTableWidgetItem(p.idCard));
+    }
+
+    if (list.isEmpty()) {
+        t->clearSelection();
+    } else {
+        t->selectRow(0);
+    }
+}
+
+bool ProfilePage::validatePassengerInput(const QString& name, const QString& idCard, QString* err) const
+{
+    if (name.trimmed().isEmpty()) {
+        if (err) *err = "姓名不能为空";
+        return false;
+    }
+    if (idCard.trimmed().isEmpty()) {
+        if (err) *err = "身份证号不能为空";
+        return false;
+    }
+    // TODO
+    return true;
+}
+
+void ProfilePage::on_btnAddPassenger_clicked()
+{
+    QString name = QInputDialog::getText(this, "添加乘机人", "姓名：");
+    if (name.isNull()) return;
+
+    QString idCard = QInputDialog::getText(this, "添加乘机人", "身份证号：");
+    if (idCard.isNull()) return;
+
+    QString err;
+    if (!validatePassengerInput(name, idCard, &err)) {
+        QMessageBox::warning(this, "输入不合法", err);
+        return;
+    }
+
+    auto *nm = NetworkManager::instance();
+    if (m_passengerConn) QObject::disconnect(m_passengerConn);
+
+    m_passengerConn = connect(nm, &NetworkManager::jsonReceived, this,
+        [this](const QJsonObject &obj) {
+            const QString type = obj.value(Protocol::KEY_TYPE).toString();
+
+            if (type == Protocol::TYPE_ERROR) {
+                QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+                QObject::disconnect(m_passengerConn);
+                m_passengerConn = {};
+                return;
+            }
+            if (type != Protocol::TYPE_PASSENGER_ADD_RESP) return;
+
+            const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
+            const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+            if (!ok) QMessageBox::warning(this, "添加失败", msg);
+            else QMessageBox::information(this, "添加成功", msg);
+
+            QObject::disconnect(m_passengerConn);
+            m_passengerConn = {};
+
+            if (ok) requestPassengers();
+        });
+
+    QJsonObject data;
+    data.insert("passenger_name", name.trimmed());
+    data.insert("passenger_id_card", idCard.trimmed());
+
+    QJsonObject req;
+    req.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_ADD);
+    req.insert(Protocol::KEY_DATA, data);
+    nm->sendJson(req);
+}
+
+int ProfilePage::currentPassengerRow() const
+{
+    auto *t = ui->tablePassengers;
+    const auto ranges = t->selectedRanges();
+    if (ranges.isEmpty()) return -1;
+    return ranges.first().topRow();
+}
+
+Common::PassengerInfo ProfilePage::passengerAtRow(int row) const
+{
+    Common::PassengerInfo p;
+    auto *t = ui->tablePassengers;
+    if (row < 0 || row >= t->rowCount()) return p;
+
+    p.id = t->item(row, 0) ? t->item(row, 0)->text().toLongLong() : 0;
+    p.name = t->item(row, 1) ? t->item(row, 1)->text() : "";
+    p.idCard = t->item(row, 2) ? t->item(row, 2)->text() : "";
+    return p;
+}
+
+void ProfilePage::on_btnDelPassenger_clicked()
+{
+    int row = currentPassengerRow();
+    if (row < 0) {
+        QMessageBox::information(this, "提示", "请先选择要删除的乘机人");
+        return;
+    }
+
+    const auto p = passengerAtRow(row);
+
+    if (QMessageBox::question(this, "确认删除",
+                              QString("确定删除乘机人：%1（%2）？").arg(p.name, p.idCard))
+        != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    auto *nm = NetworkManager::instance();
+    if (m_passengerConn) QObject::disconnect(m_passengerConn);
+
+    m_passengerConn = connect(nm, &NetworkManager::jsonReceived, this,
+                              [this](const QJsonObject &obj)
+                              {
+                                  const QString type = obj.value(Protocol::KEY_TYPE).toString();
+
+                                  if (type == Protocol::TYPE_ERROR) {
+                                      QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+                                      QObject::disconnect(m_passengerConn);
+                                      m_passengerConn = {};
+                                      return;
+                                  }
+                                  if (type != Protocol::TYPE_PASSENGER_DEL_RESP) return;
+
+                                  const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
+                                  const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+                                  if (!ok) QMessageBox::warning(this, "删除失败", msg);
+                                  else QMessageBox::information(this, "删除成功", msg);
+
+                                  QObject::disconnect(m_passengerConn);
+                                  m_passengerConn = {};
+
+                                  if (ok) requestPassengers();
+                              });
+
+    QJsonObject data;
+    data.insert("passenger_name", p.name);
+    data.insert("passenger_id_card", p.idCard);
+
+    QJsonObject req;
+    req.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_DEL);
+    req.insert(Protocol::KEY_DATA, data);
+    nm->sendJson(req);
+}
+

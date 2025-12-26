@@ -284,7 +284,7 @@ DBResult DBManager::updatePhoneByUsername(const QString& username,const QString&
 DBResult DBManager::addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
 {
     //1.插入乘机人表
-    QString passengerSql="insert into passenger (name,id_card) values(?,?,?)";
+    QString passengerSql="insert into passenger (name,id_card) values(?,?)";
     QList<QVariant> passengerParams;
     passengerParams<<passenger_name<<passenger_id_card;
 
@@ -351,7 +351,7 @@ DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerIn
     QString sql="select p.* "
                   "from user_passenger up "
                   "inner join user u on up.user_id=u.id "
-                  "inner join passenger p on up.passenger_id=p.id"
+                  "inner join passenger p on up.passenger_id=p.id "
                   "where u.id=user_id";
     QList<QVariant>params;
     params<<user_id;
