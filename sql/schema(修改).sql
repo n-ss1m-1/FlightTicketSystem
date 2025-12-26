@@ -100,11 +100,12 @@ DROP TABLE IF EXISTS `passenger`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `passenger` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '乘机人ID',
+  `user_id` bigint(20) NOT NULL COMMENT '所属用户ID（关联user表主键）',
   `name` varchar(50) NOT NULL COMMENT '乘机人姓名',
   `id_card` varchar(18) NOT NULL COMMENT '身份证号',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_id_card` (`id_card`) COMMENT '身份证号唯一，避免重复添加同一乘机人'
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='乘机人信息表';
+  UNIQUE KEY `uk_user_id_id_card` (`user_id`,`id_card`) COMMENT '同一用户不能添加相同身份证的乘机人'
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='乘机人信息表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -113,7 +114,7 @@ CREATE TABLE `passenger` (
 
 LOCK TABLES `passenger` WRITE;
 /*!40000 ALTER TABLE `passenger` DISABLE KEYS */;
-INSERT INTO `passenger` VALUES (1,'张三','110101199003077890');
+INSERT INTO `passenger` VALUES (4,1,'陈','123456789012345678');
 /*!40000 ALTER TABLE `passenger` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -147,33 +148,6 @@ LOCK TABLES `user` WRITE;
 INSERT INTO `user` VALUES (1,'1','1','15278400113','张三','110101199003077890'),(2,'2','2','13900139001','李四','310101198905124567'),(3,'wangwu777','777777Cc','13700137002','王五','440101199508238765'),(4,'zhaoliu666','666666Dd','13600136003','赵六','510101199210159876'),(5,'sunqi999','999999Ee','13500135004','孙七','500101200001011234'),(6,'zhouba888','888888Ff','13400134005','周八','330101198807185678'),(7,'wuyan12345','555555Gg','13300133006','司马九','430101199309206789'),(8,'chenshi001','000000Hh','13200132007','陈十','320101199104257890'),(9,'liushi002','111111Ii','19900199008','刘十一','610101198712108901'),(10,'wangshi003','222222Jj','19800198009','王十二','120101199406309012');
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `user_passenger`
---
-
-DROP TABLE IF EXISTS `user_passenger`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `user_passenger` (
-  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
-  `passenger_id` bigint(20) unsigned NOT NULL COMMENT '乘机人ID',
-  PRIMARY KEY (`user_id`,`passenger_id`),
-  KEY `fk_relation_passenger_id` (`passenger_id`),
-  CONSTRAINT `fk_relation_passenger_id` FOREIGN KEY (`passenger_id`) REFERENCES `passenger` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_relation_user_id` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户-乘机人关联表';
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `user_passenger`
---
-
-LOCK TABLES `user_passenger` WRITE;
-/*!40000 ALTER TABLE `user_passenger` DISABLE KEYS */;
-INSERT INTO `user_passenger` VALUES (1,1);
-/*!40000 ALTER TABLE `user_passenger` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -184,4 +158,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-12-25 10:30:40
+-- Dump completed on 2025-12-26 17:02:12
