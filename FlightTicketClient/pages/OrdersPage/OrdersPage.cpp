@@ -94,6 +94,15 @@ void OrdersPage::on_btnCancel_clicked() {
 }
 
 void OrdersPage::onJsonReceived(const QJsonObject &obj) {
+    // ---------- [调试打印代码开始] ----------
+    // 将收到的 JSON 对象转换成漂亮的字符串格式并打印到控制台
+    QJsonDocument doc(obj);
+    qDebug() << "==== [服务器返回的原始数据] ====";
+    qDebug() << doc.toJson(QJsonDocument::Indented); // Indented 参数会让 JSON 带换行和缩进
+    qDebug() << "================================";
+    // ---------- [调试打印代码结束] ----------
+
+
     QString type = obj.value(Protocol::KEY_TYPE).toString();
 
     if (type == Protocol::TYPE_ERROR) {

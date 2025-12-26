@@ -198,6 +198,8 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
     order.createdTime = query.value("created_time").toDateTime();
 
 
+    order.createdTime = query.value("created_time").toDateTime();
+
     return order;
 }
 

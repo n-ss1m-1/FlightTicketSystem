@@ -176,6 +176,13 @@ void ProfilePage::on_btnLogin_clicked()
     auto *dlg = new LoginDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
 
+    // 跳转至注册
+    connect(dlg, &LoginDialog::requestRegister, this,
+            [this, dlg]() {
+                dlg->close();
+                on_btnRegister_clicked();
+            });
+
     // 发登录请求
     connect(dlg, &LoginDialog::loginSubmitted, this,
             [this](const QString &u, const QString &p) {

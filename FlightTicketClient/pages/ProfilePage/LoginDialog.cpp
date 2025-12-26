@@ -1,6 +1,7 @@
 #include "LoginDialog.h"
 #include "ui_LoginDialog.h"
 #include <QMessageBox>
+#include "RegisterDialog.h"
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
@@ -39,3 +40,10 @@ void LoginDialog::on_btnLogin_clicked()
 
     emit loginSubmitted(u, p);
 }
+
+void LoginDialog::on_btnGoRegister_clicked()
+{
+    emit requestRegister();
+    reject();
+}
+

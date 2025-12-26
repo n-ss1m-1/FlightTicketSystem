@@ -13,15 +13,27 @@ SOURCES += \
     DBManager.cpp \
     FlightServer.cpp \
     OnlineUserManager.cpp \
+    ServerWindow.cpp \
+    addflightdialog.cpp \
+    addorderdialog.cpp \
+    adduserdialog.cpp \
     main.cpp
 
 HEADERS += \
     ClientHandler.h \
     DBManager.h \
     FlightServer.h \
-    OnlineUserManager.h
+    OnlineUserManager.h \
+    ServerWindow.h \
+    addflightdialog.h \
+    addorderdialog.h \
+    adduserdialog.h
 
-FORMS +=
+FORMS += \
+    ServerWindow.ui \
+    addflightdialog.ui \
+    addorderdialog.ui \
+    adduserdialog.ui
 
 INCLUDEPATH += $$PWD/..
 
