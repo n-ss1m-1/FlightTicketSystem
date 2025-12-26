@@ -94,6 +94,7 @@ struct UserInfo {
 // 常用乘机人信息
 struct PassengerInfo {
     qint64 id = 0;                  // 常用乘机人ID 主键
+    qint64 user_id = 0;             //所属用户ID
     QString name;                   // 姓名
     QString idCard;                 // 身份证号
 };
@@ -195,6 +196,7 @@ inline QJsonObject passengerToJson(const PassengerInfo &ord)
 {
     QJsonObject o;
     o.insert("id", static_cast<qint64>(ord.id));
+    o.insert("userId", static_cast<qint64>(ord.user_id));
     putIfNotEmpty(o, "name", ord.name);
     putIfNotEmpty(o, "idCard", ord.idCard);
     return o;
@@ -204,6 +206,7 @@ inline PassengerInfo passengerFromJson(const QJsonObject &o)
 {
     PassengerInfo ord;
     ord.id = static_cast<qint64>(o.value("id").toVariant().toLongLong());
+    ord.user_id = static_cast<qint64>(o.value("userId").toVariant().toLongLong());
     ord.name = o.value("name").toString();
     ord.idCard = o.value("idCard").toString();
 

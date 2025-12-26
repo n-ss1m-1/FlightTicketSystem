@@ -110,6 +110,28 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         const QString idCard = data.value("idCard").toString(); // 身份证
         const QString realName = data.value("realName").toString(); // 真实姓名
 
+        if(username.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户名不能为空"));
+            return;
+        }
+        if(password.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码不能为空"));
+            return;
+        }
+        static const QRegularExpression phoneReg("^1[3-9]\\d{9}$");  //第一位：1  第二位：3~9 后面接9个数字
+        if(!phoneReg.match(phone).hasMatch()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "手机号格式无效（第一位:1  第二位:3~9  后面接任意9个数字）"));
+            return;
+        }
+        if(idCard.isEmpty() || idCard.length()!=18 ) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "身份证号必须为18位"));
+            return;
+        }
+        if (realName.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "真实姓名不能为空"));
+            return;
+        }
+
         qInfo() << "Register request:" << username;
 
         // 检查用户是否已存在
@@ -236,12 +258,12 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else if(res == DBResult::NoData)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无常用乘机人"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无常用乘机人 "+errMsg));
         }
         else
         {
             qCritical()<<"passengers get error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败 "+errMsg));
         }
     }
     //添加常用乘机人 需要传入添加的乘机人的姓名和身份证号
@@ -256,7 +278,22 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         Common::UserInfo user=userManager.getUserInfoByHandler(this);
         const QString passenger_name=data.value("passenger_name").toString();
-        const QString passenger_id_card=data.value("passenger_id_card").toString();
+        const QString passenger_id_card=data.value("passenger_id_card").toString().toUpper();
+
+        if (passenger_name.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "常用乘机人姓名不能为空"));
+            return;
+        }
+        if(passenger_id_card.isEmpty() || passenger_id_card.length()!=18 ) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "常用乘机人身份证号必须为18位"));
+            return;
+        }
+
+        // static const QRegularExpression idCardReg("^[1-9]\\d{5}(18|19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[0-9X]$");
+        // if (!idCardReg.match(passenger_id_card).hasMatch()) {
+        //     sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "身份证号格式无效"));
+        //     return;
+        // }
 
         qInfo()<<"Add Passenger request: user:"<<user.username<<" to add passenger:"<<passenger_name<<"("<<passenger_id_card<<")";
 
@@ -267,7 +304,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("添加常用乘机人失败")));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("添加常用乘机人失败 ")+errMsg));
         }
 
     }
@@ -283,18 +320,26 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         Common::UserInfo user=userManager.getUserInfoByHandler(this);
         const QString passenger_name=data.value("passenger_name").toString();
-        const QString passenger_id_card=data.value("passenger_id_card").toString();
+        const QString passenger_id_card=data.value("passenger_id_card").toString().toUpper();
+        if (passenger_name.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "常用乘机人姓名不能为空"));
+            return;
+        }
+        if(passenger_id_card.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "常用乘机人身份证号不能为空"));
+            return;
+        }
 
         qInfo()<<"Delete Passenger request: user:"<<user.username<<" to delete passenger:"<<passenger_name<<"("<<passenger_id_card<<")";
 
-        DBResult res=db.delPassenger(passenger_name,passenger_id_card,&errMsg);
+        DBResult res=db.delPassenger(user.id,passenger_name,passenger_id_card,&errMsg);
         if(res == DBResult::Success)
         {
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_PASSENGER_DEL_RESP,QJsonObject(),QString("删除常用乘机人成功")));
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败")));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败 ")+errMsg));
         }
     }
     //根据出发地+目的地+日期查询航班
