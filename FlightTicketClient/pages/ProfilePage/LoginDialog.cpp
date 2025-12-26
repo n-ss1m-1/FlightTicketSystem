@@ -1,7 +1,6 @@
 #include "LoginDialog.h"
 #include "ui_LoginDialog.h"
 #include <QMessageBox>
-#include "RegisterDialog.h"
 
 LoginDialog::LoginDialog(QWidget *parent)
     : QDialog(parent)
