@@ -382,7 +382,7 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     }
     return DBResult::Success;
 }
-DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg)
+DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg)   //已支付订单
 {
     //sql语句和参数
     QString sql="select * from orders where user_id=? order by id desc";
@@ -404,6 +404,29 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& or
     }
 
     return orders.isEmpty()? DBResult::NoData : DBResult::Success;
+}
+DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& idCard,QList<Common::OrderInfo>& orders,QString* errMsg)     //本人订单
+{
+    //sql语句和参数
+    QString sql="select * from orders where real_name=? and id_card=? order by id desc";
+    QList<QVariant>params;
+    params<<realName<<idCard;
+
+    //执行sql
+    QSqlQuery query=Query(sql,params,errMsg);
+    if(!query.isActive())
+    {
+        return DBResult::QueryFailed;
+    }
+
+    //遍历结果集
+    orders.clear();
+    while(query.next())     //初始位置：-1
+    {
+        orders.append(orderFromQuery(query));
+    }
+
+    return DBResult::Success;
 }
 DBResult DBManager::cancelOrder(qint64 userId,qint64 orderId,QString* errMsg)
 {

@@ -63,8 +63,10 @@ static const QString TYPE_ORDER_CREATE      = "order_create";
 static const QString TYPE_ORDER_CREATE_RESP = "order_create_response";
 
 // 订单列表
-static const QString TYPE_ORDER_LIST      = "order_list";
+static const QString TYPE_ORDER_LIST      = "order_list";               //查询已支付订单
 static const QString TYPE_ORDER_LIST_RESP = "order_list_response";
+static const QString TYPE_ORDER_LIST_MY   = "order_list_my";            //查询本人订单
+static const QString TYPE_ORDER_LIST_MY_RESP = "order_list_my_response";
 
 // 取消订单 / 退票
 static const QString TYPE_ORDER_CANCEL      = "order_cancel";
