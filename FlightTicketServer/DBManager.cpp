@@ -163,8 +163,9 @@ Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query)
 {
     Common::PassengerInfo passenger;
     passenger.id=query.value("id").toLongLong();
+    passenger.user_id=query.value("userId").toLongLong();
     passenger.name=query.value("name").toString();
-    passenger.idCard=query.value("idCard").toString();
+    passenger.idCard=query.value("id_card").toString();
     return passenger;
 }
 Common::FlightInfo DBManager::flightFromQuery(const QSqlQuery& query)
@@ -281,66 +282,44 @@ DBResult DBManager::updatePhoneByUsername(const QString& username,const QString&
     }
     return DBResult::Success;
 }
+//常用乘机人
 DBResult DBManager::addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
 {
-    //1.插入乘机人表
-    QString passengerSql="insert into passenger (name,id_card) values(?,?)";
-    QList<QVariant> passengerParams;
-    passengerParams<<passenger_name<<passenger_id_card;
-
-    QSqlQuery passengerQuery(db);
-    if(!passengerQuery.prepare(passengerSql))
+    //检查是否已有该常用乘机人
+    QString checkSql="select * from passenger where user_id=? and name=? and id_card=?";
+    QList<QVariant> checkParams;
+    checkParams<<user_id<<passenger_name<<passenger_id_card;
+    QSqlQuery query=Query(checkSql,checkParams,errMsg);
+    if(query.isActive() && query.next())
     {
-        if(errMsg) *errMsg="SQL prepare failed: "+passengerQuery.lastError().text();
-        qWarning()<<"SQL prepare failed: "<<passengerSql<<"Error:"<<passengerQuery.lastError().text();
-    }
-
-    for(int i=0; i<passengerParams.size();i++)
-    {
-        passengerQuery.bindValue(i, passengerParams[i]);  //位置绑定
-    }
-
-    if(!passengerQuery.exec())
-    {
-        if(errMsg)
-        {
-            *errMsg="sql exec failed: "+passengerQuery.lastError().text();
-            qWarning()<<"sql exec failed: "<<passengerSql<<"Error:"<<passengerQuery.lastError().text();
-        }
-    }
-    if(passengerQuery.numRowsAffected()<=0)
-    {
-        if(errMsg) *errMsg=*errMsg+"电话号码更改失败";
+        if(errMsg) *errMsg=*errMsg+"已有该常用乘机人,无需重复添加";
         return DBResult::updateFailed;
     }
 
-    //2.查找乘机人ID
-    QVariant passenger_id = passengerQuery.lastInsertId();
+    //插入乘机人表
+    QString sql="insert into passenger (user_id,name,id_card) values(?,?,?)";
+    QList<QVariant> params;
+    params<<user_id<<passenger_name<<passenger_id_card;
 
-    //3.插入user_passenger关联表
-    QString U_P_sql="insert into user_passenger (user_id,passenger_id) values(?,?)";
-    QList<QVariant> U_P_params;
-    U_P_params<<user_id<<passenger_id;
-
-    int sqlAffected=update(U_P_sql,U_P_params,errMsg);
+    int sqlAffected=update(sql,params,errMsg);
     if(sqlAffected<=0)
     {
-        if(errMsg) *errMsg=*errMsg+"加入乘机人失败";
+        if(errMsg) *errMsg=*errMsg+"添加常用乘机人失败";
         return DBResult::updateFailed;
     }
 
     return DBResult::Success;
 }
-DBResult  DBManager::delPassenger(const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
+DBResult  DBManager::delPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
 {
-    QString sql="delete from passenger where name=? and id_card=?";
+    QString sql="delete from passenger where user_id=? and name=? and id_card=? ";
     QList<QVariant> params;
-    params<<passenger_name<<passenger_id_card;
+    params<<user_id<<passenger_name<<passenger_id_card;
 
     int sqlAffected=update(sql,params,errMsg);
     if(sqlAffected<=0)
     {
-        if(errMsg) *errMsg=*errMsg+"删除乘机人失败";
+        if(errMsg) *errMsg=*errMsg+"删除常用乘机人失败";
         return DBResult::updateFailed;
     }
 
@@ -348,11 +327,7 @@ DBResult  DBManager::delPassenger(const QString& passenger_name,const QString& p
 }
 DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg)
 {
-    QString sql="select p.* "
-                  "from user_passenger up "
-                  "inner join user u on up.user_id=u.id "
-                  "inner join passenger p on up.passenger_id=p.id "
-                  "where u.id=user_id";
+    QString sql="select * from passenger where user_id=?";
     QList<QVariant>params;
     params<<user_id;
 
