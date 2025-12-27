@@ -523,12 +523,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
 
         const Common::UserInfo user=userManager.getUserInfoByHandler(this);
-        const qint64 userId=user.id;
         const qint64 orderId=data.value("orderId").toVariant().toLongLong();
-        if (userId<=0) {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
-            return;
-        }
         if (orderId<=0) {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "orderid不能<=0"));
             return;
@@ -536,7 +531,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         qInfo() << "cancel order request: from username:" << user.username <<" orderId:" << orderId;
 
-        DBResult res=db.cancelOrder(userId,orderId,&errMsg);
+        DBResult res=db.cancelOrder(orderId,&errMsg);
         if(res == DBResult::Success)
         {
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_CANCEL_RESP,QJsonObject(),QString("订单取消成功")));

@@ -505,7 +505,7 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
 
     return DBResult::Success;
 }
-DBResult DBManager::cancelOrder(qint64 userId,qint64 orderId,QString* errMsg)
+DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
 {
     //开启事务
     if(!beginTransaction())
@@ -515,9 +515,9 @@ DBResult DBManager::cancelOrder(qint64 userId,qint64 orderId,QString* errMsg)
     }
 
     //1.订单状态->取消
-    QString orderSql="update orders set status=? where user_id=? and id=? and status=?";
+    QString orderSql="update orders set status=? where id=? and status=?";
     QList<QVariant>orderParams;
-    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<userId<<orderId<<static_cast<int>(Common::OrderStatus::Booked);    //预定的可以取消，已取消或已完成的不能再取消
+    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Booked);    //预定的可以取消，已取消或已完成的不能再取消
 
     int orderAffected=update(orderSql,orderParams,errMsg);
     if(orderAffected<=0)
