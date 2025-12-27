@@ -23,6 +23,7 @@ private:
     Ui::MainWindow *ui;
     bool m_reconnectDialogShowing = false; // 正在弹出网络重连窗口
     bool m_reconnectPending = false; // 正在重连
+    bool m_suppressNextReconnectDialog = false; // forceLogout后抑制一次重连弹窗
 
     HomePage* homePage;
     FlightsPage* flightsPage;

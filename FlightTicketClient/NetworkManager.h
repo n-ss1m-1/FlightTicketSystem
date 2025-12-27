@@ -32,6 +32,9 @@ public:
     QString m_username = "";
     Common::UserInfo m_userInfo;
 
+    void logout(); // 退出登录
+    void clearSession(); // 清理登录态/缓存
+
 signals:
     void connected();
     void disconnected();
@@ -40,6 +43,8 @@ signals:
     void notConnected(); // sendJson()未连接时触发弹窗
     void reconnectRequested();
     void loginStateChanged(bool loggedIn); // 登录状态改变
+
+    void forceLogout(const QString& reason);   // 意外断连强制登出
 
 private slots:
     void onReadyRead();
@@ -51,7 +56,6 @@ private:
     explicit NetworkManager(QObject *parent = nullptr);
     void processBuffer();
 
-private:
     QTcpSocket m_socket;
     QByteArray m_buffer;
 
@@ -59,6 +63,11 @@ private:
     quint16 m_port = 0;
 
     bool m_loggedIn = false;
+
+    void handleUnexpectedDisconnect(const QString& reason);
+
+    bool m_manualDisconnect = false; // 主动断开标记（logout时置true）
+    bool m_disconnectHandled = false;
 };
 
 #endif // NETWORKMANAGER_H

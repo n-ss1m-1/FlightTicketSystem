@@ -3,6 +3,8 @@
 
 #include <QWidget>
 #include <QJsonObject>
+#include <QPointer>
+#include <QDialog>
 #include "Common/Models.h"
 
 namespace Ui {
@@ -61,6 +63,9 @@ private:
     Common::PassengerInfo passengerAtRow(int row) const;
 
     bool validatePassengerInput(const QString& name, const QString& idCard, QString* err = nullptr) const;
+
+    void bindForceLogoutToDialog(QDialog* dlg);   // 断线强制登出时关闭弹窗
+    QPointer<QDialog> m_activeDialog;
 };
 
 #endif // PROFILEPAGE_H

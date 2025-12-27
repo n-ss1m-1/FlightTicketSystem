@@ -90,16 +90,30 @@ MainWindow::MainWindow(QWidget *parent)
     };
 
     connect(nm, &NetworkManager::notConnected, this, [=]{
+        if (m_suppressNextReconnectDialog) { m_suppressNextReconnectDialog = false; return; }
         showReconnectDialog("未连接服务器", "当前未连接服务器。是否尝试重连？");
     });
 
     connect(nm, &NetworkManager::disconnected, this, [=]{
+        if (m_suppressNextReconnectDialog) { m_suppressNextReconnectDialog = false; return; }
         showReconnectDialog("网络断开", "与服务器连接已断开。是否尝试重连？");
     });
 
     connect(nm, &NetworkManager::errorOccurred, this, [=](const QString& err){
+        if (m_suppressNextReconnectDialog) { m_suppressNextReconnectDialog = false; return; }
         m_reconnectPending = false;
         showReconnectDialog("网络错误", "发生网络错误：\n" + err + "\n是否尝试重连？");
+    });
+
+    connect(nm, &NetworkManager::forceLogout, this, [=](const QString& reason){
+        // forceLogout意外断连导致已登出
+        m_reconnectPending = false;
+
+        ui->tabWidget->setCurrentIndex(0);
+
+        m_suppressNextReconnectDialog = true;
+
+        QMessageBox::warning(this, "已退出登录", reason);
     });
 
     nm->connectToServer(kHost, kPort);
@@ -113,10 +127,12 @@ MainWindow::~MainWindow()
 void MainWindow::updateTab()
 {
     bool loggedIn = NetworkManager::instance()->isLoggedIn();
-    ui->tabWidget->setTabEnabled(1, loggedIn);
-    ui->tabWidget->setTabEnabled(2, loggedIn);
-    auto currentPage = ui->tabWidget->currentWidget();
-    if(currentPage == flightsPage || currentPage == ordersPage){
-        ui->tabWidget->setCurrentWidget(homePage);
+
+    ui->tabWidget->setTabEnabled(1, loggedIn); // Flights
+    ui->tabWidget->setTabEnabled(2, loggedIn); // Orders
+
+    int idx = ui->tabWidget->currentIndex();
+    if (!loggedIn && (idx == 1 || idx == 2)) {
+        ui->tabWidget->setCurrentIndex(0);
     }
 }

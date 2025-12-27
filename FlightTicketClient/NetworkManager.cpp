@@ -37,7 +37,11 @@ void NetworkManager::sendJson(const QJsonObject &obj)
 {
     if (!isConnected()) {
         qWarning() << "未连接，无法发送";
-        emit notConnected();
+        if (isLoggedIn()) {
+            handleUnexpectedDisconnect("连接已断开，已自动退出登录");
+        } else {
+            emit notConnected();
+        }
         return;
     }
     QJsonDocument doc(obj);
@@ -133,18 +137,29 @@ void NetworkManager::changePassword(const QString &username, const QString &oldP
 }
 
 void NetworkManager::onConnected() {
+    m_disconnectHandled = false;
     emit connected();
 }
 
 void NetworkManager::onDisconnected() {
-    emit disconnected();
+    if (isLoggedIn()) {
+        handleUnexpectedDisconnect("与服务器断开连接，已自动退出登录");
+    } else {
+        emit disconnected();
+    }
 }
 
 void NetworkManager::onError(QAbstractSocket::SocketError err) {
     if (err == QAbstractSocket::RemoteHostClosedError) {
         return; // 避免和disconnected()重复
     }
-    emit errorOccurred(m_socket.errorString());
+
+    // 如果已经登录，网络错误就强制登出
+    if (isLoggedIn()) {
+        handleUnexpectedDisconnect("网络错误：" + m_socket.errorString() + "，已自动退出登录");
+    } else {
+        emit errorOccurred(m_socket.errorString());
+    }
 }
 
 bool NetworkManager::isLoggedIn() const
@@ -161,3 +176,46 @@ void NetworkManager::setLoggedIn(bool loggedIn)
     emit loginStateChanged(m_loggedIn);
 }
 
+void NetworkManager::clearSession()
+{
+    m_buffer.clear();
+    setLoggedIn(false);
+
+    m_username.clear();
+    m_userInfo = {};
+}
+
+void NetworkManager::handleUnexpectedDisconnect(const QString& reason)
+{
+    if (m_disconnectHandled) return;
+    m_disconnectHandled = true;
+
+    // 主动退出不触发强制登出提示
+    if (m_manualDisconnect) {
+        m_manualDisconnect = false;
+        clearSession();
+        emit disconnected();
+        return;
+    }
+
+    // 意外断连：清理登录态，通知UI强制登出
+    clearSession();
+    emit forceLogout(reason);
+    emit disconnected();
+}
+
+void NetworkManager::logout()
+{
+    if (isConnected()) {
+        QJsonObject req;
+        req.insert(Protocol::KEY_TYPE, Protocol::TYPE_LOGOUT);
+
+        QJsonObject data;
+        data.insert("username", m_username);
+        req.insert(Protocol::KEY_DATA, data);
+
+        sendJson(req);
+    }
+
+    clearSession();
+}
