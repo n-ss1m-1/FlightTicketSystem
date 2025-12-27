@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QMessageBox>
 #include <QInputDialog>
+#include "PassengerPickDialog.h"
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
@@ -45,7 +46,12 @@ void FlightsPage::on_btnSearch_clicked()
 
 void FlightsPage::on_btnBook_clicked()
 {
-    if (NetworkManager::instance()->m_username == "") {
+    qDebug() << "username=" << NetworkManager::instance()->m_username
+             << "realName=" << NetworkManager::instance()->m_userInfo.realName
+             << "idCard=" << NetworkManager::instance()->m_userInfo.idCard;
+
+
+    if (!NetworkManager::instance()->isLoggedIn()) {
         QMessageBox::warning(this, "提示", "请先登录！");
         return;
     }
@@ -58,24 +64,16 @@ void FlightsPage::on_btnBook_clicked()
 
     qint64 flightId = model->data(model->index(row, 0)).toLongLong();
 
-    bool ok;
-    QString name = QInputDialog::getText(this, "乘客信息", "请输入乘客姓名:", QLineEdit::Normal, "", &ok);
-    if (!ok || name.isEmpty()) return;
-    QString idCard = QInputDialog::getText(this, "乘客信息", "请输入身份证号:", QLineEdit::Normal, "", &ok);
-    if (!ok || idCard.isEmpty()) return;
-
-    QJsonObject data;
-    data.insert("username", NetworkManager::instance()->m_username);
-    data.insert("flightId", flightId);
-    data.insert("passengerName", name);
-    data.insert("passengerIdCard", idCard);
+    m_pendingBookFlightId = flightId;
+    m_waitingPassengerPick = true;
 
     QJsonObject root;
-    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CREATE);
-    root.insert(Protocol::KEY_DATA, data);
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_GET);
+    root.insert(Protocol::KEY_DATA, QJsonObject());
 
     NetworkManager::instance()->sendJson(root);
 }
+
 
 void FlightsPage::onJsonReceived(const QJsonObject &obj)
 {
@@ -83,9 +81,31 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
 
     // 1. 恢复错误处理逻辑
     if (type == Protocol::TYPE_ERROR) {
-        // 如果出错（比如服务端返回查询失败），也建议清空旧数据
-        // model->removeRows(0, model->rowCount());
-        // QMessageBox::warning(this, "查询提示", obj.value(Protocol::KEY_MESSAGE).toString());
+        QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+        // 如果这是订票流程里passenger_get的返回，仍然允许选择本用户
+        if (m_waitingPassengerPick) {
+            m_waitingPassengerPick = false;
+
+            if (msg.contains("暂无常用乘机人")) {
+                Common::PassengerInfo self;
+                self.name  = NetworkManager::instance()->m_userInfo.realName;
+                self.idCard= NetworkManager::instance()->m_userInfo.idCard;
+                self.user_id = NetworkManager::instance()->m_userInfo.id;
+
+                PassengerPickDialog dlg(self, {}, this);
+                if (dlg.exec() == QDialog::Accepted) {
+                    auto chosen = dlg.selectedPassenger();
+                    sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);
+                }
+                return;
+            }
+
+            // 其它错误：提示
+            QMessageBox::warning(this, "获取乘机人失败", msg);
+            return;
+        }
+
         return;
     }
 
@@ -127,4 +147,45 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
         QMessageBox::information(this, "成功", msg);
     }
+
+    // passenger_get 返回：弹出 PassengerPickDialog
+    else if (type == Protocol::TYPE_PASSENGER_GET_RESP) {
+        qDebug() << "[Book] waiting=" << m_waitingPassengerPick;
+
+        if (!m_waitingPassengerPick) return;
+        m_waitingPassengerPick = false;
+
+        QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
+        QJsonArray arr = dataObj.value("passengers").toArray();
+        QList<Common::PassengerInfo> others = Common::passengersFromJsonArray(arr);
+
+        // 从登录用户信息拿真实姓名/身份证
+        Common::PassengerInfo self;
+        self.name = NetworkManager::instance()->m_userInfo.realName;
+        self.idCard = NetworkManager::instance()->m_userInfo.idCard;
+
+        PassengerPickDialog dlg(self, others, this);
+        if (dlg.exec() == QDialog::Accepted) {
+            auto chosen = dlg.selectedPassenger();
+            sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);
+        }
+        return;
+    }
+
 }
+
+void FlightsPage::sendCreateOrder(qint64 flightId, const QString& name, const QString& idCard)
+{
+    QJsonObject data;
+    data.insert("username", NetworkManager::instance()->m_username);
+    data.insert("flightId", flightId);
+    data.insert("passengerName", name);
+    data.insert("passengerIdCard", idCard);
+
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CREATE);
+    root.insert(Protocol::KEY_DATA, data);
+
+    NetworkManager::instance()->sendJson(root);
+}
+

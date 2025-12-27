@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QTcpSocket>
 #include <QJsonObject>
-#include "Common/Protocol.h"
+#include "Common/Models.h"
 
 class NetworkManager : public QObject
 {
@@ -28,7 +28,9 @@ public:
     bool isLoggedIn() const;
     void setLoggedIn(bool loggedIn);
 
+    // QJsonObject m_userJson;
     QString m_username = "";
+    Common::UserInfo m_userInfo;
 
 signals:
     void connected();

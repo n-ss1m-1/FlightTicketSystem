@@ -26,6 +26,11 @@ private slots:
 private:
     Ui::FlightsPage *ui;
     QStandardItemModel *model;   // 数据显示模型
+
+    qint64 m_pendingBookFlightId = -1; // 等待订票的航班ID
+    bool m_waitingPassengerPick = false;  // 正在等待 passenger_get 返回
+
+    void sendCreateOrder(qint64 flightId, const QString& name, const QString& idCard);
 };
 
 #endif // FLIGHTSPAGE_H

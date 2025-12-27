@@ -14,6 +14,7 @@ SOURCES += \
     SettingsManager.cpp \
     main.cpp \
     pages/FlightsPage/FlightsPage.cpp \
+    pages/FlightsPage/PassengerPickDialog.cpp \
     pages/HomePage/HomePage.cpp \
     pages/OrdersPage/OrdersPage.cpp \
     pages/ProfilePage/ChangePhoneDialog.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     NetworkManager.h \
     SettingsManager.h \
     pages/FlightsPage/FlightsPage.h \
+    pages/FlightsPage/PassengerPickDialog.h \
     pages/HomePage/HomePage.h \
     pages/OrdersPage/OrdersPage.h \
     pages/ProfilePage/ChangePhoneDialog.h \
@@ -38,6 +40,7 @@ HEADERS += \
 FORMS += \
     MainWindow.ui \
     pages/FlightsPage/FlightsPage.ui \
+    pages/FlightsPage/PassengerPickDialog.ui \
     pages/HomePage/HomePage.ui \
     pages/OrdersPage/OrdersPage.ui \
     pages/ProfilePage/ChangePhoneDialog.ui \

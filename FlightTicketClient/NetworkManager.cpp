@@ -1,4 +1,5 @@
 #include "NetworkManager.h"
+#include "Common/Protocol.h"
 #include <QJsonDocument>
 #include <QDebug>
 #include <QMessageBox>

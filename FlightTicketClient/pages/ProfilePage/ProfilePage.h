@@ -40,9 +40,10 @@ public slots:
 private:
     Ui::ProfilePage *ui;
 
+    // 移至 NetworkManager
     // bool m_loggedIn = false;
-    // QString m_username; // 移至 NetworkManager
-    QJsonObject m_userJson; // 记录用户信息
+    // QString m_username;
+    // QJsonObject m_userJson;
 
     void updateLoginUI(); // 刷新按钮/界面
     void updateUserInfoUI(); // 根据 m_userJson 填充/刷新显示

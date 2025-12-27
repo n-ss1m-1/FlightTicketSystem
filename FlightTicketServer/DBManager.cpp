@@ -485,7 +485,7 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& or
 DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& idCard,QList<Common::OrderInfo>& orders,QString* errMsg)     //本人订单
 {
     //sql语句和参数
-    QString sql="select * from orders where real_name=? and id_card=? order by id desc";
+    QString sql="select * from orders where passenger_name=? and passenger_id_card=? order by id desc";
     QList<QVariant>params;
     params<<realName<<idCard;
 

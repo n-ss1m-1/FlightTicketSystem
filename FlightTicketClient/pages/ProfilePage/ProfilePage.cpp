@@ -3,6 +3,7 @@
 #include "LoginDialog.h"
 #include <QMessageBox>
 #include "NetworkManager.h"
+#include "Common/Protocol.h"
 #include "RegisterDialog.h"
 #include "ChangePwdDialog.h"
 #include "ChangePhoneDialog.h"
@@ -19,10 +20,6 @@ ProfilePage::ProfilePage(QWidget *parent)
     updateLoginUI();
 
     initPassengerTable();
-
-    connect(ui->btnAddPassenger, &QPushButton::clicked, this, &ProfilePage::on_btnAddPassenger_clicked);
-    connect(ui->btnDelPassenger, &QPushButton::clicked, this, &ProfilePage::on_btnDelPassenger_clicked);
-
 
     ui->comboTheme->clear();
     ui->comboTheme->addItem("跟随系统", (int)SettingsManager::ThemeMode::System);
@@ -103,9 +100,9 @@ QString ProfilePage::maskMiddle(const QString& s, int left, int right, QChar ch)
 
 void ProfilePage::applyPrivacyMask()
 {
-    const QString phone    = m_userJson.value("phone").toString();
-    const QString realName = m_userJson.value("realName").toString();
-    const QString idCard   = m_userJson.value("idCard").toString();
+    const QString phone    = NetworkManager::instance()->m_userInfo.phone;
+    const QString realName = NetworkManager::instance()->m_userInfo.realName;
+    const QString idCard   = NetworkManager::instance()->m_userInfo.idCard;
 
     // 手机号：显示 3-4-4，其余*
     ui->lblPhoneValue->setText(
@@ -167,7 +164,7 @@ void ProfilePage::on_btnLogin_clicked()
                     if (type == Protocol::TYPE_LOGOUT_RESP && success) {
                         NetworkManager::instance()->setLoggedIn(false);
                         NetworkManager::instance()->m_username.clear();
-                        m_userJson = QJsonObject();
+                        NetworkManager::instance()->m_userInfo = Common::userFromJson(QJsonObject());
                         updateUserInfoUI();
                         updateLoginUI();
                         requestPassengers();
@@ -214,7 +211,7 @@ void ProfilePage::on_btnLogin_clicked()
 
                         NetworkManager::instance()->m_username = data.value("username").toString();
 
-                        m_userJson = data;
+                        NetworkManager::instance()->m_userInfo = Common::userFromJson(data);
                         updateUserInfoUI();
                         updateLoginUI();
                         dlg->accept();
@@ -324,7 +321,7 @@ void ProfilePage::on_btnChangePhone_clicked()
     dlg->setAttribute(Qt::WA_DeleteOnClose);
 
 
-    const QString oldPhone = m_userJson.value("phone").toString();
+    const QString oldPhone = NetworkManager::instance()->m_userInfo.phone;
     dlg->setCurrentPhone(oldPhone);
 
     connect(dlg, &ChangePhoneDialog::phoneSubmitted, this,
@@ -355,7 +352,7 @@ void ProfilePage::on_btnChangePhone_clicked()
                     if (success) {
 
                         const QString newPhone = dlg->findChild<QLineEdit*>("leNewPhone")->text().trimmed();
-                        m_userJson.insert("phone", newPhone);
+                        NetworkManager::instance()->m_userInfo.phone = newPhone;
 
                         updateUserInfoUI();
 

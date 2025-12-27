@@ -245,7 +245,7 @@
          </font>
         </property>
         <property name="text">
-         <string>乘机人</string>
+         <string>常用乘机人</string>
         </property>
        </widget>
       </item>
