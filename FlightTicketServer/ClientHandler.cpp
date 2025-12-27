@@ -444,7 +444,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单创建失败"+errMsg));
         }
     }
-    //查询用户所有订单(根据userId)
+    //查询用户所有订单(根据userId) --- 已支付订单
     else if(type == Protocol::TYPE_ORDER_LIST)
     {
         //检查用户是否真正登陆 避免非法JSON构造
@@ -456,15 +456,14 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         const Common::UserInfo user=userManager.getUserInfoByHandler(this);
         const qint64 userId=user.id;
-        if (userId<=0) {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "用户id不能<=0"));
-            return;
-        }
 
-        qInfo() << "search orders request: from username:" << user.username;
+
+        qInfo() << "search orders that the account holder paid request: from username:" << user.username;
 
         QList<Common::OrderInfo> orders;
+
         DBResult res=db.getOrdersByUserId(userId,orders,&errMsg);
+
         if(res == DBResult::Success)
         {
             QJsonArray orderArr = Common::ordersToJsonArray(orders);
@@ -475,8 +474,43 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"order search error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败 "+errMsg));
         }
+
+    }
+    //查询该用户的本人订单
+    else if(type == Protocol::TYPE_ORDER_LIST_MY)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        const Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const QString realName=user.realName;
+        const QString idCard=user.idCard;
+
+        qInfo() << "search orders of the account holder request: from username:" << user.username;
+
+        QList<Common::OrderInfo> orders;
+
+        DBResult res=db.getOrdersByRealName(realName,idCard,orders,&errMsg);
+
+        if(res == DBResult::Success)
+        {
+            QJsonArray orderArr = Common::ordersToJsonArray(orders);
+            QJsonObject respData;
+            respData.insert("orders",orderArr);
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_MY_RESP,respData,QString("查询到%1条订单").arg(orders.size())));
+        }
+        else
+        {
+            qCritical()<<"order search error:"<<errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败 "+errMsg));
+        }
+
     }
     //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)

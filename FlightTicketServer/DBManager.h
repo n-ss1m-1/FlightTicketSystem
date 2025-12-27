@@ -68,7 +68,8 @@ public:
 
     //订单                    //order作为传出参数
     DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
-    DBResult getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);
+    DBResult getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);                 //已支付订单
+    DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);     //本人订单
     DBResult cancelOrder(qint64 userId,qint64 orderId,QString* errMsg=nullptr);       //通过userId和orderId来定位,避免用户A取消用户B的订单
 
 private:
