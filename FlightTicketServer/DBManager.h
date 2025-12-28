@@ -6,6 +6,7 @@
 #include <QSqlError>
 #include <QString>
 #include <QList>
+#include <QPair>
 #include <QVariant>     //类型转换
 #include <QDateTime>    //时间类型
 #include "Common/Models.h"  //引入数据类型
@@ -68,9 +69,9 @@ public:
 
     //订单                    //order作为传出参数
     DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
-    DBResult getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);                 //已支付订单
-    DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<Common::OrderInfo>& orders,QString* errMsg=nullptr);     //本人订单
-    DBResult cancelOrder(qint64 orderId,QString* errMsg=nullptr);       //通过userId和orderId来定位,避免用户A取消用户B的订单
+    DBResult getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);                 //已支付订单
+    DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);     //本人订单
+    DBResult cancelOrder(qint64 orderId,QString* errMsg=nullptr);
 
 private:
     DBManager();       //单例模式
@@ -80,10 +81,10 @@ private:
     QSqlDatabase db;
 
     //将查询结果转换为相应的Info
-    Common::UserInfo userFromQuery(const QSqlQuery& query);
-    Common::FlightInfo flightFromQuery(const QSqlQuery& query);
-    Common::OrderInfo orderFromQuery(const QSqlQuery& query);
-    Common::PassengerInfo passengerFromQuery(const QSqlQuery& query);
+    Common::UserInfo userFromQuery(const QSqlQuery& query,const QString prefix="");
+    Common::FlightInfo flightFromQuery(const QSqlQuery& query,const QString prefix="");
+    Common::OrderInfo orderFromQuery(const QSqlQuery& query,const QString prefix="");
+    Common::PassengerInfo passengerFromQuery(const QSqlQuery& query,const QString prefix="");
 };
 
 

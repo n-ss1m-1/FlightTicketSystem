@@ -147,7 +147,7 @@ bool DBManager::rollbackTransaction()
 
 
 //将查询结果转换为相应的Info
-Common::UserInfo DBManager::userFromQuery(const QSqlQuery& query)
+Common::UserInfo DBManager::userFromQuery(const QSqlQuery& query,const QString prefix)
 {
     Common::UserInfo user;
     user.id=query.value("id").toLongLong();
@@ -159,7 +159,7 @@ Common::UserInfo DBManager::userFromQuery(const QSqlQuery& query)
 
     return user;
 }
-Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query)
+Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query,const QString prefix)
 {
     Common::PassengerInfo passenger;
     passenger.id=query.value("id").toLongLong();
@@ -168,38 +168,56 @@ Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query)
     passenger.idCard=query.value("id_card").toString();
     return passenger;
 }
-Common::FlightInfo DBManager::flightFromQuery(const QSqlQuery& query)
+Common::FlightInfo DBManager::flightFromQuery(const QSqlQuery& query,const QString prefix)
 {
     Common::FlightInfo flight;
-    flight.id=query.value("id").toLongLong();
-    flight.flightNo=query.value("flight_no").toString();
-    flight.fromCity=query.value("from_city").toString();
-    flight.toCity=query.value("to_city").toString();
-    flight.departTime=query.value("depart_time").toDateTime();
-    flight.arriveTime=query.value("arrive_time").toDateTime();
-    flight.priceCents=query.value("price_cents").toInt();
-    flight.seatTotal=query.value("seat_total").toInt();
-    flight.seatLeft=query.value("seat_left").toInt();
-    flight.status=static_cast<Common::FlightStatus>(query.value("status").toInt());
+    QString idField = prefix + "id";
+    QString flightNoField = prefix + "flight_no";
+    QString fromCityField = prefix + "from_city";
+    QString toCityField = prefix + "to_city";
+    QString departTimeField = prefix + "depart_time";
+    QString arriveTimeField = prefix + "arrive_time";
+    QString priceCentsField = prefix + "price_cents";
+    QString seatTotalField = prefix + "seat_total";
+    QString seatLeftField = prefix + "seat_left";
+    QString statusField = prefix + "status";
+
+    flight.id = query.value(idField).toLongLong();
+    flight.flightNo = query.value(flightNoField).toString();
+    flight.fromCity = query.value(fromCityField).toString();
+    flight.toCity = query.value(toCityField).toString();
+    flight.departTime = query.value(departTimeField).toDateTime();
+    flight.arriveTime = query.value(arriveTimeField).toDateTime();
+    flight.priceCents = query.value(priceCentsField).toInt();
+    flight.seatTotal = query.value(seatTotalField).toInt();
+    flight.seatLeft = query.value(seatLeftField).toInt();
+    flight.status = static_cast<Common::FlightStatus>(query.value(statusField).toInt());
 
     return flight;
 }
-Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query)
+Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query,const QString prefix)
 {
     Common::OrderInfo order;
-    order.id=query.value("id").toLongLong();
-    order.userId=query.value("user_id").toLongLong();
-    order.flightId=query.value("flight_id").toLongLong();
-    order.passengerName=query.value("passenger_name").toString();
-    order.passengerIdCard=query.value("passenger_id_card").toString();
-    order.seatNum=query.value("seat_num").toString();
-    order.priceCents=query.value("price_cents").toInt();
-    order.status=static_cast<Common::OrderStatus>(query.value("status").toInt());
-    
-    order.createdTime = query.value("created_time").toDateTime();
 
+    QString idField = prefix + "id";
+    QString userIdField = prefix + "user_id";
+    QString flightIdField = prefix + "flight_id";
+    QString passengerNameField = prefix + "passenger_name";
+    QString passengerIdCardField = prefix + "passenger_id_card";
+    QString seatNumField = prefix + "seat_num";
+    QString priceCentsField = prefix + "price_cents";
+    QString statusField = prefix + "status";
+    QString createdTimeField = prefix + "created_time";
 
-    order.createdTime = query.value("created_time").toDateTime();
+    order.id = query.value(idField).toLongLong();
+    order.userId = query.value(userIdField).toLongLong();
+    order.flightId = query.value(flightIdField).toLongLong();
+    order.passengerName = query.value(passengerNameField).toString();
+    order.passengerIdCard = query.value(passengerIdCardField).toString();
+    order.seatNum = query.value(seatNumField).toString();
+    order.priceCents = query.value(priceCentsField).toInt();
+    order.status = static_cast<Common::OrderStatus>(query.value(statusField).toInt());
+    order.createdTime = query.value(createdTimeField).toDateTime();
 
     return order;
 }
@@ -459,10 +477,19 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     }
     return DBResult::Success;
 }
-DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& orders,QString* errMsg)   //已支付订单
+DBResult DBManager::getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg)   //已支付订单
 {
     //sql语句和参数
-    QString sql="select * from orders where user_id=? order by id desc";
+    QString sql="select "
+                "o.id AS o_id, o.user_id AS o_user_id, o.flight_id AS o_flight_id,"
+                "o.passenger_name AS o_passenger_name, o.passenger_id_card AS o_passenger_id_card,"
+                "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.status AS o_status,"
+                "o.created_time AS o_created_time,"
+                "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
+                "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
+                "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
+                "f.status AS f_status"
+                "from orders o inner join flight f on o.flight_id=f.id where o.user_id=? order by o.id desc";
     QList<QVariant>params;
     params<<userId;
 
@@ -474,18 +501,31 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<Common::OrderInfo>& or
     }
 
     //遍历结果集
-    orders.clear();
+    ordersAndflights.clear();
+    Common::OrderInfo order;
+    Common::FlightInfo flight;
     while(query.next())     //初始位置：-1
     {
-        orders.append(orderFromQuery(query));
+        orderFromQuery(query,"o_");
+        flightFromQuery(query,"f_");
+        ordersAndflights.append(QPair<Common::OrderInfo, Common::FlightInfo>(order,flight));
     }
 
-    return orders.isEmpty()? DBResult::NoData : DBResult::Success;
+    return ordersAndflights.isEmpty()? DBResult::NoData : DBResult::Success;
 }
-DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& idCard,QList<Common::OrderInfo>& orders,QString* errMsg)     //本人订单
+DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& idCard,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg)     //本人订单
 {
     //sql语句和参数
-    QString sql="select * from orders where passenger_name=? and passenger_id_card=? order by id desc";
+    QString sql="select "
+                  "o.id AS o_id, o.user_id AS o_user_id, o.flight_id AS o_flight_id,"
+                  "o.passenger_name AS o_passenger_name, o.passenger_id_card AS o_passenger_id_card,"
+                  "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.status AS o_status,"
+                  "o.created_time AS o_created_time,"
+                  "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
+                  "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
+                  "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
+                  "f.status AS f_status"
+                  "from orders o inner join flight f on o.flight_id=f.id where passenger_name=? and passenger_id_card=? order by id desc";
     QList<QVariant>params;
     params<<realName<<idCard;
 
@@ -497,13 +537,17 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
     }
 
     //遍历结果集
-    orders.clear();
+    ordersAndflights.clear();
+    Common::OrderInfo order;
+    Common::FlightInfo flight;
     while(query.next())     //初始位置：-1
     {
-        orders.append(orderFromQuery(query));
+        orderFromQuery(query,"o_");
+        flightFromQuery(query,"f_");
+        ordersAndflights.append(QPair<Common::OrderInfo, Common::FlightInfo>(order,flight));
     }
 
-    return DBResult::Success;
+    return ordersAndflights.isEmpty()? DBResult::NoData : DBResult::Success;
 }
 DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
 {
@@ -515,9 +559,9 @@ DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
     }
 
     //1.订单状态->取消
-    QString orderSql="update orders set status=? where id=? and status=?";
+    QString orderSql="update orders set status=? where id=? and status in(?,?)";
     QList<QVariant>orderParams;
-    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Booked);    //预定的可以取消，已取消或已完成的不能再取消
+    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Booked)<<static_cast<int>(Common::OrderStatus::Paid);    //预定的和已支付的可以取消，已取消或已完成的不能再取消
 
     int orderAffected=update(orderSql,orderParams,errMsg);
     if(orderAffected<=0)

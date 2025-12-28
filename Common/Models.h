@@ -40,8 +40,9 @@ enum class FlightStatus : qint32 {
 
 enum class OrderStatus : qint32 {
     Booked   = 0,   // 已预订
-    Canceled = 1,   // 已取消/退票
-    Finished = 2    // 已完成
+    Paid     = 1,   // 已支付
+    Canceled = 2,   // 已取消/退票
+    Finished = 3    // 已完成
 };
 
 // ======================== 通用工具函数 ========================
@@ -281,6 +282,44 @@ inline QList<OrderInfo> ordersFromJsonArray(const QJsonArray &arr)
     }
     return list;
 }
+
+// -------- QPair<OrderInfo,FlightInfo> <-> JSON --------
+inline QJsonArray ordersAndflightsToJsonArray(const QList<QPair<OrderInfo,FlightInfo>> &list)
+{
+    QJsonArray arr;
+    for (const auto &o : list)
+    {
+        const Common::OrderInfo& order = o.first;
+        const Common::FlightInfo& flight = o.second;
+
+        QJsonObject compositeObj;
+        compositeObj["order"] = orderToJson(order);     // 订单子对象
+        compositeObj["flight"] = flightToJson(flight);  // 航班子对象
+
+        // 3. 添加到 QJsonArray
+        arr.append(compositeObj);
+    }
+    return arr;
+}
+inline QList<QPair<OrderInfo,FlightInfo>> ordersAndflightsFromJsonArray(const QJsonArray &arr)
+{
+    QList<QPair<OrderInfo,FlightInfo>> list;
+
+    for(const QJsonValue& jsonVal : arr)
+    {
+        QJsonObject compositeObj = jsonVal.toObject();
+        QJsonObject orderObj = compositeObj["order"].toObject();
+        QJsonObject flightObj = compositeObj["flight"].toObject();
+
+        OrderInfo order = orderFromJson(orderObj);
+        FlightInfo flight = flightFromJson(flightObj);
+
+        list.append(qMakePair(order, flight));
+    }
+
+    return list;
+}
+
 
 // ======================== 基础校验 ========================
 

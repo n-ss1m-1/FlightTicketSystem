@@ -460,16 +460,16 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         qInfo() << "search orders that the account holder paid request: from username:" << user.username;
 
-        QList<Common::OrderInfo> orders;
+        QList<QPair<Common::OrderInfo,Common::FlightInfo>> ordersAndflights;
 
-        DBResult res=db.getOrdersByUserId(userId,orders,&errMsg);
+        DBResult res=db.getOrdersByUserId(userId,ordersAndflights,&errMsg);
 
         if(res == DBResult::Success)
         {
-            QJsonArray orderArr = Common::ordersToJsonArray(orders);
+            QJsonArray orderAndflightArr = Common::ordersAndflightsToJsonArray(ordersAndflights);
             QJsonObject respData;
-            respData.insert("orders",orderArr);
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_RESP,respData,QString("查询到%1条订单").arg(orders.size())));
+            respData.insert("ordersAndflights",orderAndflightArr);
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_RESP,respData,QString("查询到%1条订单").arg(orderAndflightArr.size())));
         }
         else
         {
@@ -494,16 +494,16 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         qInfo() << "search orders of the account holder request: from username:" << user.username;
 
-        QList<Common::OrderInfo> orders;
+        QList<QPair<Common::OrderInfo,Common::FlightInfo>> ordersAndflights;
 
-        DBResult res=db.getOrdersByRealName(realName,idCard,orders,&errMsg);
+        DBResult res=db.getOrdersByRealName(realName,idCard,ordersAndflights,&errMsg);
 
         if(res == DBResult::Success)
         {
-            QJsonArray orderArr = Common::ordersToJsonArray(orders);
+            QJsonArray orderAndflightArr = Common::ordersAndflightsToJsonArray(ordersAndflights);
             QJsonObject respData;
-            respData.insert("orders",orderArr);
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_MY_RESP,respData,QString("查询到%1条订单").arg(orders.size())));
+            respData.insert("ordersAndflights",orderAndflightArr);
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_RESP,respData,QString("查询到%1条订单").arg(orderAndflightArr.size())));
         }
         else
         {
