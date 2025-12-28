@@ -69,7 +69,8 @@ public:
 
     //订单                    //order作为传出参数
     DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
-    DBResult getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);                 //已支付订单
+    DBResult payForOrder(qint64 orderId,QString* errMsg=nullptr);     //修改订单状态->已支付
+    DBResult getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);
     DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);     //本人订单
     DBResult cancelOrder(qint64 orderId,QString* errMsg=nullptr);
 

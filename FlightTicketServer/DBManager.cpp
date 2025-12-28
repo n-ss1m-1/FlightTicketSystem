@@ -477,6 +477,22 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     }
     return DBResult::Success;
 }
+DBResult DBManager::payForOrder(qint64 orderId,QString* errMsg)
+{
+    QString sql="update orders o set o.status=? where o.id=?";
+    QList<QVariant> params;
+    params<<static_cast<int>(Common::OrderStatus::Paid)<<orderId;
+
+    int affected=update(sql,params,errMsg);
+
+    if(affected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+" 支付失败";
+        return DBResult::updateFailed;
+    }
+
+    return DBResult::Success;
+}
 DBResult DBManager::getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg)   //已支付订单
 {
     //sql语句和参数

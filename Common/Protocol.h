@@ -70,6 +70,9 @@ static const QString TYPE_FLIGHT_SEARCH_RESP = "flight_search_response";
 static const QString TYPE_ORDER_CREATE      = "order_create";
 static const QString TYPE_ORDER_CREATE_RESP = "order_create_response";
 
+static const QString TYPE_ORDER_PAY      = "order_pay";
+static const QString TYPE_ORDER_PAY_RESP = "order_pay_response";
+
 // 订单列表
 static const QString TYPE_ORDER_LIST      = "order_list";               //查询已支付订单
 static const QString TYPE_ORDER_LIST_RESP = "order_list_response";

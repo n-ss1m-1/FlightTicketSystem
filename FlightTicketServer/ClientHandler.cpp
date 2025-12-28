@@ -151,7 +151,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         } else
         {
             qCritical() << "Register DB Error:" << errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败，数据库错误"));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败:"+errMsg));
         }
     }
 
@@ -188,7 +188,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeOkResponse(Protocol::TYPE_CHANGE_PWD_RESP, QJsonObject(), "密码修改成功"));
         } else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码修改失败"));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "密码修改失败:"+errMsg));
         }
     }
     //根据用户名修改电话号码
@@ -229,7 +229,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"phone change error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"电话号码修改失败"));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"电话号码修改失败:"+errMsg));
         }
     }
     //查询常用乘机人
@@ -258,12 +258,12 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else if(res == DBResult::NoData)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无常用乘机人 "+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无常用乘机人:"+errMsg));
         }
         else
         {
             qCritical()<<"passengers get error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败 "+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败:"+errMsg));
         }
     }
     //添加常用乘机人 需要传入添加的乘机人的姓名和身份证号
@@ -304,7 +304,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("添加常用乘机人失败 ")+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("添加常用乘机人失败:")+errMsg));
         }
 
     }
@@ -339,7 +339,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败 ")+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败:")+errMsg));
         }
     }
     //根据出发地+目的地+日期查询航班
@@ -384,12 +384,12 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         else if(res == DBResult::NoData)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无相关航班"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"暂无相关航班:"+errMsg));
         }
         else
         {
             qCritical()<<"flight search error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"航班查询失败"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"航班查询失败:"+errMsg));
         }
     }
     //创建订单
@@ -441,7 +441,33 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"order create error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单创建失败"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单创建失败:"+errMsg));
+        }
+    }
+    else if(type == Protocol::TYPE_ORDER_PAY)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        const Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const qint64 orderId=data.value("orderId").toVariant().toLongLong();
+
+
+        qInfo() << "pay for order request: from username:" << user.username;
+
+        DBResult res=db.payForOrder(orderId,&errMsg);
+        if(res == DBResult::Success)
+        {
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_PAY_RESP,QJsonObject(),QString("订单(%1)支付成功").arg(orderId)));
+        }
+        else
+        {
+            qCritical()<<"pay for order error:"<<errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单支付失败:"+errMsg));
         }
     }
     //查询用户所有订单(根据userId) --- 已支付订单
@@ -474,7 +500,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"order search error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败 "+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败:"+errMsg));
         }
 
     }
@@ -508,7 +534,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"order search error:"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败 "+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败:"+errMsg));
         }
 
     }
@@ -539,7 +565,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         else
         {
             qCritical()<<"order cancel error"<<errMsg;
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单取消失败"+errMsg));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单取消失败:"+errMsg));
         }
     }
 
