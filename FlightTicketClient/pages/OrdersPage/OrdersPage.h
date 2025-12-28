@@ -27,6 +27,8 @@ private slots:
     void on_btnCancel_clicked();
     void onJsonReceived(const QJsonObject &obj);
 
+    void onOrderRowDoubleClicked(const QModelIndex &index);
+
 private:
     Ui::OrdersPage *ui;
     QStandardItemModel *model;
@@ -46,6 +48,7 @@ private:
     void rebuildTableFromCache();
 
     QVariant orderIdVariant(qint64 id) const;
+
 };
 
 #endif // ORDERSPAGE_H

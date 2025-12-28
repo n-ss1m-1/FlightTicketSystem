@@ -9,6 +9,7 @@
 #include <QDebug>
 #include <QShowEvent>
 #include <algorithm>
+#include "OrderDetailDialog.h"
 
 static const int ROLE_ORDER_ID = Qt::UserRole + 1;
 
@@ -47,61 +48,9 @@ OrdersPage::OrdersPage(QWidget *parent) :
     ui->tableOrders->horizontalHeader()->setStretchLastSection(true);
 
     // 双击行弹出详细信息
-    connect(ui->tableOrders, &QTableView::doubleClicked, this, [this](const QModelIndex &index){
-        int row = index.row();
-        if (row < 0) return;
+    connect(ui->tableOrders, &QTableView::doubleClicked,
+            this, &OrdersPage::onOrderRowDoubleClicked);
 
-        QStandardItem *it0 = model->item(row, 0);
-        if (!it0) return;
-
-        qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
-        if (!m_orderCache.contains(orderId)) return;
-
-        const auto &e = m_orderCache[orderId];
-        const auto &ord = e.ord;
-        const auto &flt = e.flight;
-
-        const QString sourceText = e.fromUser ? "本用户" : "其他用户";
-
-        QString detail = QString(
-                             "【订单信息】\n"
-                             "订单号：%1\n"
-                             "下单时间：%2\n"
-                             "订单来源：%3\n"
-                             "下单用户ID：%4\n"
-                             "状态：%5\n"
-                             "金额：￥%6\n"
-                             "\n"
-                             "【乘机人信息】\n"
-                             "姓名：%7\n"
-                             "证件号：%8\n"
-                             "座位号：%9\n"
-                             "\n"
-                             "【航班信息】\n"
-                             "航班ID：%10\n"
-                             "航班号：%11\n"
-                             "航线：%12 → %13\n"
-                             "起飞：%14\n"
-                             "到达：%15\n"
-                             )
-                             .arg(ord.id)
-                             .arg(dtToText(ord.createdTime))
-                             .arg(sourceText)
-                             .arg(ord.userId)
-                             .arg(statusToText(ord.status))
-                             .arg(QString::number(ord.priceCents / 100.0, 'f', 2))
-                             .arg(ord.passengerName.isEmpty() ? "--" : ord.passengerName)
-                             .arg(ord.passengerIdCard.isEmpty() ? "--" : ord.passengerIdCard)
-                             .arg(ord.seatNum.isEmpty() ? "未分配" : ord.seatNum)
-                             .arg(ord.flightId)
-                             .arg(flt.flightNo.isEmpty() ? "--" : flt.flightNo)
-                             .arg(flt.fromCity.isEmpty() ? "--" : flt.fromCity)
-                             .arg(flt.toCity.isEmpty() ? "--" : flt.toCity)
-                             .arg(dtToText(flt.departTime))
-                             .arg(dtToText(flt.arriveTime));
-
-        QMessageBox::information(this, "订单详情", detail);
-    });
 
     // 连接网络信号
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived,
@@ -309,4 +258,23 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj)
         loadOrders();
         return;
     }
+}
+
+void OrdersPage::onOrderRowDoubleClicked(const QModelIndex &index)
+{
+    int row = index.row();
+    if (row < 0) return;
+
+    QStandardItem *it0 = model->item(row, 0);
+    if (!it0) return;
+
+    qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
+    if (!m_orderCache.contains(orderId)) return;
+
+    const auto &e = m_orderCache[orderId];
+    const QString sourceText = e.fromUser ? "本用户" : "其他用户";
+
+    OrderDetailDialog dlg(this);
+    dlg.setData(e.ord, e.flight, sourceText);
+    dlg.exec();
 }

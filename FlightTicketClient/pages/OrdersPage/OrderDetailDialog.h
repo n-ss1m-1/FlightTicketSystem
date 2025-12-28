@@ -16,11 +16,16 @@ public:
     explicit OrderDetailDialog(QWidget *parent = nullptr);
     ~OrderDetailDialog();
 
-    void setOrder(const Common::OrderInfo &ord, const QString &sourceText = QString());
+    void setData(const Common::OrderInfo &ord,
+                 const Common::FlightInfo &flt,
+                 const QString &sourceText);
 
 
 private:
     Ui::OrderDetailDialog *ui;
+
+    static QString statusToText(Common::OrderStatus s);
+    static QString dtToText(const QDateTime &dt);
 };
 
 #endif // ORDERDETAILDIALOG_H
