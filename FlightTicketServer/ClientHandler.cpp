@@ -503,7 +503,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             QJsonArray orderAndflightArr = Common::ordersAndflightsToJsonArray(ordersAndflights);
             QJsonObject respData;
             respData.insert("ordersAndflights",orderAndflightArr);
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_RESP,respData,QString("查询到%1条订单").arg(orderAndflightArr.size())));
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_LIST_MY_RESP,respData,QString("查询到%1条订单").arg(orderAndflightArr.size())));
         }
         else
         {

@@ -488,7 +488,7 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInf
                 "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
                 "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
                 "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
-                "f.status AS f_status"
+                "f.status AS f_status "
                 "from orders o inner join flight f on o.flight_id=f.id where o.user_id=? order by o.id desc";
     QList<QVariant>params;
     params<<userId;
@@ -506,8 +506,8 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInf
     Common::FlightInfo flight;
     while(query.next())     //初始位置：-1
     {
-        orderFromQuery(query,"o_");
-        flightFromQuery(query,"f_");
+        order = orderFromQuery(query,"o_");
+        flight = flightFromQuery(query,"f_");
         ordersAndflights.append(QPair<Common::OrderInfo, Common::FlightInfo>(order,flight));
     }
 
@@ -524,8 +524,8 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
                   "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
                   "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
                   "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
-                  "f.status AS f_status"
-                  "from orders o inner join flight f on o.flight_id=f.id where passenger_name=? and passenger_id_card=? order by id desc";
+                  "f.status AS f_status "
+                  "from orders o inner join flight f on o.flight_id=f.id where passenger_name=? and passenger_id_card=? order by o.id desc";
     QList<QVariant>params;
     params<<realName<<idCard;
 
@@ -542,8 +542,8 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
     Common::FlightInfo flight;
     while(query.next())     //初始位置：-1
     {
-        orderFromQuery(query,"o_");
-        flightFromQuery(query,"f_");
+        order = orderFromQuery(query,"o_");
+        flight = flightFromQuery(query,"f_");
         ordersAndflights.append(QPair<Common::OrderInfo, Common::FlightInfo>(order,flight));
     }
 
