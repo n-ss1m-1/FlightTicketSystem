@@ -20,12 +20,28 @@ public:
                  const Common::FlightInfo &flt,
                  const QString &sourceText);
 
+signals:
+    void orderPaid(qint64 orderId); // 支付后刷新OrderPage
+
+private slots:
+    void on_btnPay_clicked();
+    void on_btnExit_clicked();
+    void onJsonReceived(const QJsonObject &obj);
 
 private:
     Ui::OrderDetailDialog *ui;
 
     static QString statusToText(Common::OrderStatus s);
     static QString dtToText(const QDateTime &dt);
+
+    void refreshPayButton();
+
+    Common::OrderInfo  m_ord;     // 保存当前订单用于支付/更新状态
+    Common::FlightInfo m_flt;     //
+    QString m_sourceText;
+
+    bool m_waitingPayResp = false;
+    QMetaObject::Connection m_conn;
 };
 
 #endif // ORDERDETAILDIALOG_H
