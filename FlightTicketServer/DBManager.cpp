@@ -479,6 +479,7 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 }
 DBResult DBManager::payForOrder(qint64 orderId,QString* errMsg)
 {
+    //修改订单状态->Paid
     QString sql="update orders o set o.status=? where o.id=?";
     QList<QVariant> params;
     params<<static_cast<int>(Common::OrderStatus::Paid)<<orderId;

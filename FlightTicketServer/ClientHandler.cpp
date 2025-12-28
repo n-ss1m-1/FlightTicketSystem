@@ -444,6 +444,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单创建失败:"+errMsg));
         }
     }
+    //支付订单(借助orderId)
     else if(type == Protocol::TYPE_ORDER_PAY)
     {
         //检查用户是否真正登陆 避免非法JSON构造
