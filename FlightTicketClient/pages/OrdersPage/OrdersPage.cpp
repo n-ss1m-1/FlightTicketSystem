@@ -4,9 +4,30 @@
 #include "Common/Protocol.h"
 #include "Common/Models.h"
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QMessageBox>
 #include <QDebug>
 #include <QShowEvent>
+#include <algorithm>
+
+static const int ROLE_ORDER_ID = Qt::UserRole + 1;
+
+static QString statusToText(Common::OrderStatus s)
+{
+    switch (s) {
+    case Common::OrderStatus::Booked:   return "已预订";
+    case Common::OrderStatus::Paid:     return "已支付";
+    case Common::OrderStatus::Canceled: return "已退票";
+    case Common::OrderStatus::Finished: return "已完成";
+    default: return "未知";
+    }
+}
+
+static QString dtToText(const QDateTime &dt)
+{
+    if (!dt.isValid()) return "--";
+    return dt.toString("yyyy-MM-dd HH:mm");
+}
 
 OrdersPage::OrdersPage(QWidget *parent) :
     QWidget(parent),
@@ -16,30 +37,87 @@ OrdersPage::OrdersPage(QWidget *parent) :
 
     // 初始化模型
     model = new QStandardItemModel(this);
-    model->setHorizontalHeaderLabels({"订单ID", "订单来源", "航班ID", "乘机人", "座位号", "金额", "状态", "下单时间"});
+    model->setHorizontalHeaderLabels({
+        "订单来源", "航班号", "航线", "起飞时间", "到达时间",
+        "乘机人", "座位号", "金额", "状态"
+    });
     ui->tableOrders->setModel(model);
     ui->tableOrders->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableOrders->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableOrders->horizontalHeader()->setStretchLastSection(true);
 
+    // 双击行弹出详细信息
+    connect(ui->tableOrders, &QTableView::doubleClicked, this, [this](const QModelIndex &index){
+        int row = index.row();
+        if (row < 0) return;
+
+        QStandardItem *it0 = model->item(row, 0);
+        if (!it0) return;
+
+        qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
+        if (!m_orderCache.contains(orderId)) return;
+
+        const auto &e = m_orderCache[orderId];
+        const auto &ord = e.ord;
+        const auto &flt = e.flight;
+
+        const QString sourceText = e.fromUser ? "本用户" : "其他用户";
+
+        QString detail = QString(
+                             "【订单信息】\n"
+                             "订单号：%1\n"
+                             "下单时间：%2\n"
+                             "订单来源：%3\n"
+                             "下单用户ID：%4\n"
+                             "状态：%5\n"
+                             "金额：￥%6\n"
+                             "\n"
+                             "【乘机人信息】\n"
+                             "姓名：%7\n"
+                             "证件号：%8\n"
+                             "座位号：%9\n"
+                             "\n"
+                             "【航班信息】\n"
+                             "航班ID：%10\n"
+                             "航班号：%11\n"
+                             "航线：%12 → %13\n"
+                             "起飞：%14\n"
+                             "到达：%15\n"
+                             )
+                             .arg(ord.id)
+                             .arg(dtToText(ord.createdTime))
+                             .arg(sourceText)
+                             .arg(ord.userId)
+                             .arg(statusToText(ord.status))
+                             .arg(QString::number(ord.priceCents / 100.0, 'f', 2))
+                             .arg(ord.passengerName.isEmpty() ? "--" : ord.passengerName)
+                             .arg(ord.passengerIdCard.isEmpty() ? "--" : ord.passengerIdCard)
+                             .arg(ord.seatNum.isEmpty() ? "未分配" : ord.seatNum)
+                             .arg(ord.flightId)
+                             .arg(flt.flightNo.isEmpty() ? "--" : flt.flightNo)
+                             .arg(flt.fromCity.isEmpty() ? "--" : flt.fromCity)
+                             .arg(flt.toCity.isEmpty() ? "--" : flt.toCity)
+                             .arg(dtToText(flt.departTime))
+                             .arg(dtToText(flt.arriveTime));
+
+        QMessageBox::information(this, "订单详情", detail);
+    });
+
     // 连接网络信号
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived,
             this, &OrdersPage::onJsonReceived);
-
 }
 
 OrdersPage::~OrdersPage() {
     delete ui;
 }
 
-// 每当页面显示时（包括点击 Tab 切换回来），自动触发刷新
 void OrdersPage::showEvent(QShowEvent *event)
 {
-    QWidget::showEvent(event); // 必须调用父类逻辑
+    QWidget::showEvent(event);
 
-    // 只有在已登录的情况下才自动执行刷新，避免未登录时频繁弹窗提示
     if (!NetworkManager::instance()->m_username.isEmpty()) {
-        qDebug() << "订单页面已显示，执行自动刷新...";
+        qDebug() << "订单页面已显示，执行自动刷新.";
         loadOrders();
     }
 }
@@ -69,17 +147,23 @@ void OrdersPage::loadOrders()
 void OrdersPage::mergeOrdersFromArray(const QJsonArray &arr, bool fromUserList)
 {
     for (const auto &v : arr) {
-        const QJsonObject oObj = v.toObject();
-        Common::OrderInfo ord = Common::orderFromJson(oObj);
+        if (!v.isObject()) continue;
+
+        const QJsonObject compositeObj = v.toObject();
+        const QJsonObject orderObj = compositeObj.value("order").toObject();
+        const QJsonObject flightObj = compositeObj.value("flight").toObject();
+
+        Common::OrderInfo ord = Common::orderFromJson(orderObj);
+        Common::FlightInfo flt = Common::flightFromJson(flightObj);
 
         auto &entry = m_orderCache[ord.id]; // 若不存在会创建默认 CachedOrder
-        entry.ord = ord;                    // 覆盖/更新订单内容
+        entry.ord = ord;
+        entry.flight = flt;
 
         if (fromUserList) entry.fromUser = true;
         else              entry.fromOther = true;
     }
 }
-
 
 void OrdersPage::rebuildTableFromCache()
 {
@@ -93,37 +177,54 @@ void OrdersPage::rebuildTableFromCache()
 
     for (const auto &e : list) {
         const auto &ord = e.ord;
+        const auto &flt = e.flight;
 
         const QString sourceText = e.fromUser ? "本用户" : "其他用户";
 
-        QList<QStandardItem*> rowItems;
-        rowItems << new QStandardItem(QString::number(ord.id));
-        rowItems << new QStandardItem(sourceText);
-        rowItems << new QStandardItem(QString::number(ord.flightId));
-        rowItems << new QStandardItem(ord.passengerName);
-        rowItems << new QStandardItem(ord.seatNum.isEmpty() ? "未分配" : ord.seatNum);
+        const QString flightNo = flt.flightNo.isEmpty() ? "--" : flt.flightNo;
 
-        double priceYuan = ord.priceCents / 100.0;
-        rowItems << new QStandardItem(QString("￥%1").arg(QString::number(priceYuan, 'f', 2)));
-
-        QString statusText;
-        switch (ord.status) {
-        case Common::OrderStatus::Booked:   statusText = "已预订"; break;
-        case Common::OrderStatus::Canceled: statusText = "已退票"; break;
-        case Common::OrderStatus::Finished: statusText = "已完成"; break;
-        default: statusText = "未知"; break;
+        QString route = "--";
+        if (!flt.fromCity.isEmpty() || !flt.toCity.isEmpty()) {
+            route = QString("%1 → %2")
+                        .arg(flt.fromCity.isEmpty() ? "--" : flt.fromCity)
+                        .arg(flt.toCity.isEmpty() ? "--" : flt.toCity);
         }
+
+        const QString departText = dtToText(flt.departTime);
+        const QString arriveText = dtToText(flt.arriveTime);
+
+        const QString passengerText = ord.passengerName.isEmpty() ? "--" : ord.passengerName;
+        const QString seatText = ord.seatNum.isEmpty() ? "未分配" : ord.seatNum;
+
+        const double priceYuan = ord.priceCents / 100.0;
+        const QString priceText = QString("￥%1").arg(QString::number(priceYuan, 'f', 2));
+
+        const QString statusText = statusToText(ord.status);
+
+        QList<QStandardItem*> rowItems;
+        QStandardItem *itSource = new QStandardItem(sourceText);
+        itSource->setData(orderIdVariant(ord.id), ROLE_ORDER_ID); // orderId 不显示，但绑定到第一列 item
+
+        rowItems << itSource;
+        rowItems << new QStandardItem(flightNo);
+        rowItems << new QStandardItem(route);
+        rowItems << new QStandardItem(departText);
+        rowItems << new QStandardItem(arriveText);
+        rowItems << new QStandardItem(passengerText);
+        rowItems << new QStandardItem(seatText);
+        rowItems << new QStandardItem(priceText);
         rowItems << new QStandardItem(statusText);
-        rowItems << new QStandardItem(ord.createdTime.toString("yyyy-MM-dd HH:mm"));
 
         model->appendRow(rowItems);
     }
 }
 
-
+QVariant OrdersPage::orderIdVariant(qint64 id) const
+{
+    return QVariant::fromValue<qint64>(id);
+}
 
 void OrdersPage::on_btnRefresh_clicked() {
-    // 手动点击刷新按钮时，如果没有登录，则予以提示
     if (NetworkManager::instance()->m_username.isEmpty()) {
         QMessageBox::warning(this, "提示", "未登录，无法获取订单。");
         return;
@@ -138,7 +239,15 @@ void OrdersPage::on_btnCancel_clicked() {
         return;
     }
 
-    qint64 orderId = model->data(model->index(row, 0)).toLongLong();
+    // orderId从第一列item的UserRole取
+    QStandardItem *it0 = model->item(row, 0);
+    if (!it0) return;
+
+    qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
+    if (orderId <= 0) {
+        QMessageBox::warning(this, "提示", "订单ID无效，无法取消。");
+        return;
+    }
 
     auto reply = QMessageBox::question(this, "确认取消",
                                        QString("确定要取消订单 %1 吗？").arg(orderId));
@@ -178,7 +287,7 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj)
     // 两种订单列表响应：合并去重
     if (type == Protocol::TYPE_ORDER_LIST_RESP || type == Protocol::TYPE_ORDER_LIST_MY_RESP) {
         const QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
-        const QJsonArray orderArr = dataObj.value("orders").toArray();
+        const QJsonArray orderArr = dataObj.value("ordersAndflights").toArray();
 
         const bool fromUserList = (type == Protocol::TYPE_ORDER_LIST_RESP);
         mergeOrdersFromArray(orderArr, fromUserList);
@@ -194,7 +303,6 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj)
         }
         return;
     }
-
 
     if (type == Protocol::TYPE_ORDER_CANCEL_RESP) {
         QMessageBox::information(this, "成功", "订单已取消");

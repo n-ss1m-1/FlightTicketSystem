@@ -16,6 +16,7 @@ SOURCES += \
     pages/FlightsPage/FlightsPage.cpp \
     pages/FlightsPage/PassengerPickDialog.cpp \
     pages/HomePage/HomePage.cpp \
+    pages/OrdersPage/OrderDetailDialog.cpp \
     pages/OrdersPage/OrdersPage.cpp \
     pages/ProfilePage/ChangePhoneDialog.cpp \
     pages/ProfilePage/ChangePwdDialog.cpp \
@@ -30,6 +31,7 @@ HEADERS += \
     pages/FlightsPage/FlightsPage.h \
     pages/FlightsPage/PassengerPickDialog.h \
     pages/HomePage/HomePage.h \
+    pages/OrdersPage/OrderDetailDialog.h \
     pages/OrdersPage/OrdersPage.h \
     pages/ProfilePage/ChangePhoneDialog.h \
     pages/ProfilePage/ChangePwdDialog.h \
@@ -42,6 +44,7 @@ FORMS += \
     pages/FlightsPage/FlightsPage.ui \
     pages/FlightsPage/PassengerPickDialog.ui \
     pages/HomePage/HomePage.ui \
+    pages/OrdersPage/OrderDetailDialog.ui \
     pages/OrdersPage/OrdersPage.ui \
     pages/ProfilePage/ChangePhoneDialog.ui \
     pages/ProfilePage/ChangePwdDialog.ui \

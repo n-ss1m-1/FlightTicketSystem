@@ -33,6 +33,7 @@ private:
 
     struct CachedOrder {
         Common::OrderInfo ord;
+        Common::FlightInfo flight;
         bool fromUser = false;   // 来自按用户的查询
         bool fromOther = false;  // 来自按实名信息匹配的查询
     };
@@ -43,6 +44,8 @@ private:
 
     void mergeOrdersFromArray(const QJsonArray &arr, bool fromUserList); // 合并两种订单
     void rebuildTableFromCache();
+
+    QVariant orderIdVariant(qint64 id) const;
 };
 
 #endif // ORDERSPAGE_H
