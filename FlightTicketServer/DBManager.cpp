@@ -206,6 +206,7 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query,const QString
     QString passengerIdCardField = prefix + "passenger_id_card";
     QString seatNumField = prefix + "seat_num";
     QString priceCentsField = prefix + "price_cents";
+    QString pendingPaymentField = prefix + "pending_payment";
     QString statusField = prefix + "status";
     QString createdTimeField = prefix + "created_time";
 
@@ -216,6 +217,7 @@ Common::OrderInfo DBManager::orderFromQuery(const QSqlQuery& query,const QString
     order.passengerIdCard = query.value(passengerIdCardField).toString();
     order.seatNum = query.value(seatNumField).toString();
     order.priceCents = query.value(priceCentsField).toInt();
+    order.pendingPayment = query.value(pendingPaymentField).toInt();
     order.status = static_cast<Common::OrderStatus>(query.value(statusField).toInt());
     order.createdTime = query.value(createdTimeField).toDateTime();
 
@@ -554,16 +556,16 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     //3.更新订单座位
     order.seatNum=QString::number(flight.seatTotal-flight.seatLeft+1);
 
-    //4.初始化订单价格
-    order.priceCents=flight.priceCents;
+    //4.初始化订单价格和待支付金额
+    order.priceCents=order.pendingPayment=flight.priceCents;
 
     //5.初始化订单状态：0 Booked
     order.status=Common::OrderStatus::Booked;
 
     //6.插入订单数据
-    QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,status) values(?,?,?,?,?,?,?)";
+    QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,pending_payment,status) values(?,?,?,?,?,?,?,?)";
     QList<QVariant>orderParams;
-    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<static_cast<int>(order.status);
+    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<order.priceCents<<static_cast<int>(order.status);
 
     QSqlQuery orderQuery=Query(orderSql,orderParams,errMsg);
     if(!orderQuery.isActive())
@@ -585,8 +587,8 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 }
 DBResult DBManager::payForOrder(qint64 orderId,QString* errMsg)
 {
-    //修改订单状态->Paid
-    QString sql="update orders o set o.status=? where o.id=?";
+    //修改订单状态->Paid + 修改待支付金额->0
+    QString sql="update orders o set o.status=? , o.pending_payment=0 where o.id=?";
     QList<QVariant> params;
     params<<static_cast<int>(Common::OrderStatus::Paid)<<orderId;
 
@@ -606,8 +608,8 @@ DBResult DBManager::getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInf
     QString sql="select "
                 "o.id AS o_id, o.user_id AS o_user_id, o.flight_id AS o_flight_id,"
                 "o.passenger_name AS o_passenger_name, o.passenger_id_card AS o_passenger_id_card,"
-                "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.status AS o_status,"
-                "o.created_time AS o_created_time,"
+                "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.pending_payment AS o_pending_payment,"
+                "o.status AS o_status, o.created_time AS o_created_time,"
                 "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
                 "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
                 "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
@@ -642,8 +644,8 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
     QString sql="select "
                   "o.id AS o_id, o.user_id AS o_user_id, o.flight_id AS o_flight_id,"
                   "o.passenger_name AS o_passenger_name, o.passenger_id_card AS o_passenger_id_card,"
-                  "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.status AS o_status,"
-                  "o.created_time AS o_created_time,"
+                  "o.seat_num AS o_seat_num, o.price_cents AS o_price_cents, o.pending_payment AS o_pending_payment,"
+                  "o.status AS o_status, o.created_time AS o_created_time,"
                   "f.id AS f_id, f.flight_no AS f_flight_no, f.from_city AS f_from_city,"
                   "f.to_city AS f_to_city, f.depart_time AS f_depart_time, f.arrive_time AS f_arrive_time,"
                   "f.price_cents AS f_price_cents, f.seat_total AS f_seat_total, f.seat_left AS f_seat_left,"
@@ -682,9 +684,9 @@ DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
     }
 
     //1.订单状态->取消
-    QString orderSql="update orders set status=? where id=? and status in(?,?)";
+    QString orderSql="update orders set status=? , pending_payment=0 where id=? and status not in(?,?)";
     QList<QVariant>orderParams;
-    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Booked)<<static_cast<int>(Common::OrderStatus::Paid);    //预定的和已支付的可以取消，已取消或已完成的不能再取消
+    orderParams<<static_cast<int>(Common::OrderStatus::Canceled)<<orderId<<static_cast<int>(Common::OrderStatus::Canceled)<<static_cast<int>(Common::OrderStatus::Finished);    //已取消或已完成的不能再取消
 
     int orderAffected=update(orderSql,orderParams,errMsg);
     if(orderAffected<=0)
