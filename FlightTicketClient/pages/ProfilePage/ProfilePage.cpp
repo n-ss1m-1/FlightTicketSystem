@@ -530,12 +530,16 @@ bool ProfilePage::validatePassengerInput(const QString& name, const QString& idC
     }
     static const QRegularExpression hasLetterOrDigit(R"([A-Za-z0-9])");
     if (hasLetterOrDigit.match(name).hasMatch()) {
-       if (err) *err = "姓名不能包含字母或数字";
+        if (err) *err = "姓名不能包含字母或数字";
         return false;
     }
     static const QRegularExpression re(R"(^\d{17}(\d|X|x)$)");
     if (!re.match(idCard).hasMatch()) {
-       if (err) *err = "无效的身份证号";
+        if (err) *err = "无效的身份证号";
+        return false;
+    }
+    if (idCard == NetworkManager::instance()->m_userInfo.idCard && name == NetworkManager::instance()->m_userInfo.realName){
+        if (err) *err = "不能添加本人信息";
         return false;
     }
     return true;
