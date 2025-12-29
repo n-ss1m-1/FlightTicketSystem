@@ -18,6 +18,7 @@ static QString statusToText(Common::OrderStatus s)
     switch (s) {
     case Common::OrderStatus::Booked:   return "已预订";
     case Common::OrderStatus::Paid:     return "已支付";
+    case Common::OrderStatus::Rescheduled: return "已改签";
     case Common::OrderStatus::Canceled: return "已退票";
     case Common::OrderStatus::Finished: return "已完成";
     default: return "未知";

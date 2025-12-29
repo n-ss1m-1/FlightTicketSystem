@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include "PassengerPickDialog.h"
 #include <QShowEvent>
+#include "../OrdersPage/OrderDetailDialog.h"
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
@@ -128,7 +129,9 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
                 self.idCard= NetworkManager::instance()->m_userInfo.idCard;
                 self.user_id = NetworkManager::instance()->m_userInfo.id;
 
-                PassengerPickDialog dlg(self, {}, this);
+                Common::FlightInfo flt = m_flightCache.value(m_pendingBookFlightId);
+
+                PassengerPickDialog dlg(self, {}, flt, this);
                 if (dlg.exec() == QDialog::Accepted) {
                     auto chosen = dlg.selectedPassenger();
                     sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);
@@ -230,6 +233,7 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         for (int i = 0; i < flightsArr.size(); ++i) {
             QJsonObject fObj = flightsArr[i].toObject();
             Common::FlightInfo f = Common::flightFromJson(fObj);
+            m_flightCache[f.id] = f;
 
             QList<QStandardItem*> row;
             row << new QStandardItem(QString::number(f.id));
@@ -248,9 +252,38 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
     }
     // 处理订票结果
     else if (type == Protocol::TYPE_ORDER_CREATE_RESP) {
-        QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
-        QMessageBox::information(this, "成功", msg);
+        const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+        const QJsonObject dataObj  = obj.value(Protocol::KEY_DATA).toObject();
+        const QJsonObject orderObj = dataObj.value("order").toObject();
+        Common::OrderInfo ord = Common::orderFromJson(orderObj);
+
+        QMessageBox::information(this, "下单成功", msg);
+
+        auto reply = QMessageBox::question(this, "立即支付？", "是否现在支付该订单？\n若不支付，稍后可在订单详情页面进行支付。",
+                                           QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (reply != QMessageBox::Yes) return;
+
+        Common::FlightInfo flt = m_flightCache.value(ord.flightId);
+
+        qint64 paidOrderId = 0;
+
+        OrderDetailDialog dlg(this);
+        dlg.setData(ord, flt, "本用户");
+
+        connect(&dlg, &OrderDetailDialog::orderPaid, this, [&](qint64 orderId){
+            paidOrderId = orderId;
+            dlg.accept();
+        });
+
+        dlg.exec();
+
+        if (paidOrderId > 0) {
+            emit requestGoOrders(paidOrderId);
+        }
+        return;
     }
+
 
     // passenger_get 返回：弹出 PassengerPickDialog
     else if (type == Protocol::TYPE_PASSENGER_GET_RESP) {
@@ -268,7 +301,12 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         self.name = NetworkManager::instance()->m_userInfo.realName;
         self.idCard = NetworkManager::instance()->m_userInfo.idCard;
 
-        PassengerPickDialog dlg(self, others, this);
+        qDebug() << "[PickDlg] pendingFlightId=" << m_pendingBookFlightId
+                 << "cacheHas=" << m_flightCache.contains(m_pendingBookFlightId)
+                 << "cacheSize=" << m_flightCache.size();
+
+        Common::FlightInfo flt = m_flightCache.value(m_pendingBookFlightId);
+        PassengerPickDialog dlg(self, others, flt, this);
         if (dlg.exec() == QDialog::Accepted) {
             auto chosen = dlg.selectedPassenger();
             sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);

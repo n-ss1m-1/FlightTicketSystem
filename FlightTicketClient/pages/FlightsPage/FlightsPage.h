@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QStandardItemModel>
 #include <QJsonObject>
+#include <QHash>
+#include "Common/Models.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FlightsPage; }
@@ -16,6 +18,9 @@ class FlightsPage : public QWidget
 public:
     explicit FlightsPage(QWidget *parent = nullptr);
     ~FlightsPage();
+
+signals:
+    void requestGoOrders(qint64 orderId); // 支付完成后跳转到订单页
 
 private slots:
     void on_btnSearch_clicked(); // 查询按钮
@@ -42,6 +47,8 @@ private:
     QString m_pendingFromCity;
     QString m_pendingToCity;
     QDate m_pendingDate;
+
+    QHash<qint64, Common::FlightInfo> m_flightCache; // flightId -> FlightInfo
 
 protected:
     void showEvent(QShowEvent *event) override;

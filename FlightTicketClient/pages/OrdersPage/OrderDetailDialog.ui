@@ -15,28 +15,23 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label_2">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
+    <widget class="QGroupBox" name="groupBox">
      <property name="font">
       <font>
        <bold>true</bold>
       </font>
      </property>
-     <property name="text">
+     <property name="title">
       <string>【订单信息】</string>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="widget" native="true">
      <layout class="QFormLayout" name="formLayout">
       <item row="0" column="0">
        <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>订单ID：</string>
         </property>
@@ -44,6 +39,11 @@
       </item>
       <item row="0" column="1">
        <widget class="QLabel" name="lblOrderId">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>1</string>
         </property>
@@ -51,6 +51,11 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_3">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>下单时间：</string>
         </property>
@@ -58,6 +63,11 @@
       </item>
       <item row="1" column="1">
        <widget class="QLabel" name="lblCreatedTime">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -65,6 +75,11 @@
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>订单来源：</string>
         </property>
@@ -72,6 +87,11 @@
       </item>
       <item row="2" column="1">
        <widget class="QLabel" name="lblSource">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -79,6 +99,11 @@
       </item>
       <item row="3" column="0">
        <widget class="QLabel" name="label_7">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>下单价格：</string>
         </property>
@@ -86,6 +111,11 @@
       </item>
       <item row="3" column="1">
        <widget class="QLabel" name="lblPrice">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -93,6 +123,11 @@
       </item>
       <item row="4" column="0">
        <widget class="QLabel" name="label_9">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>订单状态：</string>
         </property>
@@ -100,6 +135,11 @@
       </item>
       <item row="4" column="1">
        <widget class="QLabel" name="lblStatus">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -109,22 +149,23 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_4">
+    <widget class="QGroupBox" name="groupBox_2">
      <property name="font">
       <font>
        <bold>true</bold>
       </font>
      </property>
-     <property name="text">
+     <property name="title">
       <string>【航班信息】</string>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="widget_2" native="true">
      <layout class="QFormLayout" name="formLayout_2">
       <item row="0" column="0">
        <widget class="QLabel" name="label_6">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>航班号：</string>
         </property>
@@ -132,6 +173,11 @@
       </item>
       <item row="0" column="1">
        <widget class="QLabel" name="lblFlightNo">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -139,6 +185,11 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_10">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>航班航线：</string>
         </property>
@@ -146,6 +197,11 @@
       </item>
       <item row="1" column="1">
        <widget class="QLabel" name="lblRoute">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -153,6 +209,11 @@
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_12">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>起飞时间：</string>
         </property>
@@ -160,6 +221,11 @@
       </item>
       <item row="2" column="1">
        <widget class="QLabel" name="lblDepartTime">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -167,6 +233,11 @@
       </item>
       <item row="3" column="0">
        <widget class="QLabel" name="label_14">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>到达时间：</string>
         </property>
@@ -174,6 +245,11 @@
       </item>
       <item row="3" column="1">
        <widget class="QLabel" name="lblArriveTime">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -183,22 +259,23 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label_8">
+    <widget class="QGroupBox" name="groupBox_3">
      <property name="font">
       <font>
        <bold>true</bold>
       </font>
      </property>
-     <property name="text">
+     <property name="title">
       <string>【乘客信息】</string>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="widget_3" native="true">
      <layout class="QFormLayout" name="formLayout_3">
       <item row="0" column="0">
        <widget class="QLabel" name="label_11">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>姓名：</string>
         </property>
@@ -206,6 +283,11 @@
       </item>
       <item row="0" column="1">
        <widget class="QLabel" name="lblPassengerName">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -213,6 +295,11 @@
       </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_13">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>身份证号：</string>
         </property>
@@ -220,6 +307,11 @@
       </item>
       <item row="1" column="1">
        <widget class="QLabel" name="lblPassengerIdCard">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>
@@ -227,6 +319,11 @@
       </item>
       <item row="2" column="0">
        <widget class="QLabel" name="label_16">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>座位号：</string>
         </property>
@@ -234,6 +331,11 @@
       </item>
       <item row="2" column="1">
        <widget class="QLabel" name="lblSeatNum">
+        <property name="font">
+         <font>
+          <bold>false</bold>
+         </font>
+        </property>
         <property name="text">
          <string>TextLabel</string>
         </property>

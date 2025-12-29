@@ -48,6 +48,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->tabWidget->setCurrentIndex(3);
     });
 
+    connect(flightsPage, &FlightsPage::requestGoOrders, this, [this](qint64){
+        ordersPage->loadOrders();
+        ui->tabWidget->setCurrentIndex(2);
+    });
+
     connect(NetworkManager::instance(),
             &NetworkManager::loginStateChanged,
             this,
