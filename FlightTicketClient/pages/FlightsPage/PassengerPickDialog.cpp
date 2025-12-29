@@ -4,9 +4,11 @@
 
 PassengerPickDialog::PassengerPickDialog(const Common::PassengerInfo& self,
                                          const QList<Common::PassengerInfo>& others,
+                                         const Common::FlightInfo& flight,
                                          QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::PassengerPickDialog)
+    , m_flight(flight)
 {
     ui->setupUi(this);
     setWindowTitle("选择乘机人");
@@ -19,6 +21,8 @@ PassengerPickDialog::PassengerPickDialog(const Common::PassengerInfo& self,
 
     initTable();
     loadData();
+
+    updateFlightInfoUi();
 
     // 默认选中第一行（本用户）
     if (m_model->rowCount() > 0) {
@@ -89,4 +93,21 @@ void PassengerPickDialog::on_btnOk_clicked()
 void PassengerPickDialog::on_btnCancel_clicked()
 {
     reject();
+}
+
+void PassengerPickDialog::updateFlightInfoUi()
+{
+    ui->lblFlightNo->setText(m_flight.flightNo.isEmpty() ? "--" : m_flight.flightNo);
+    ui->lblRoute->setText(QString("%1 → %2")
+                              .arg(m_flight.fromCity.isEmpty() ? "--" : m_flight.fromCity)
+                              .arg(m_flight.toCity.isEmpty() ? "--" : m_flight.toCity));
+
+    auto dtToText = [](const QDateTime& dt){
+        return dt.isValid() ? dt.toString("yyyy-MM-dd HH:mm") : QString("--");
+    };
+
+    ui->lblDepartTime->setText(dtToText(m_flight.departTime));
+    ui->lblArriveTime->setText(dtToText(m_flight.arriveTime));
+
+    ui->lblPrice->setText(QString("￥%1").arg(QString::number(m_flight.priceCents / 100.0, 'f', 2)));
 }

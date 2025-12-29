@@ -16,6 +16,7 @@ class PassengerPickDialog : public QDialog
 public:
     explicit PassengerPickDialog(const Common::PassengerInfo& self,
                                  const QList<Common::PassengerInfo>& others,
+                                 const Common::FlightInfo& flight,
                                  QWidget *parent = nullptr);
     ~PassengerPickDialog();
 
@@ -35,6 +36,9 @@ private:
     static QString maskIdCard(const QString& id);
     void initTable();
     void loadData();
+
+    Common::FlightInfo m_flight; // 航班信息缓存
+    void updateFlightInfoUi();
 };
 
 #endif // PASSENGERPICKDIALOG_H
