@@ -31,6 +31,20 @@ private:
     bool m_waitingPassengerPick = false;  // 正在等待 passenger_get 返回
 
     void sendCreateOrder(qint64 flightId, const QString& name, const QString& idCard);
+
+    void requestCityList();
+    void sendFlightSearch(const QString& from, const QString& to, const QDate& date);
+
+    bool m_cityListLoaded = false;
+
+    // 先拉取城市再查航班的流程控制
+    bool m_waitingCityListForSearch = false;
+    QString m_pendingFromCity;
+    QString m_pendingToCity;
+    QDate m_pendingDate;
+
+protected:
+    void showEvent(QShowEvent *event) override;
 };
 
 #endif // FLIGHTSPAGE_H

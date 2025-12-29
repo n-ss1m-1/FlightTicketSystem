@@ -7,6 +7,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include "PassengerPickDialog.h"
+#include <QShowEvent>
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
@@ -23,25 +24,59 @@ FlightsPage::FlightsPage(QWidget *parent)
 
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived, this, &FlightsPage::onJsonReceived);
 
-    ui->comboDep->addItems({"北京", "上海", "广州", "深圳", "成都", "杭州"});
-    ui->comboDest->addItems({"北京", "上海", "广州", "深圳", "成都", "杭州"});
     ui->dateEdit->setDate(QDate::currentDate());
+
+    requestCityList();
 }
 
 FlightsPage::~FlightsPage() { delete ui; }
 
-void FlightsPage::on_btnSearch_clicked()
+void FlightsPage::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+
+    // 只刷新城市列表，不触发城市回来后自动查航班
+    m_waitingCityListForSearch = false;
+
+    requestCityList();
+}
+
+
+void FlightsPage::requestCityList()
+{
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_CITY_LIST);
+    root.insert(Protocol::KEY_DATA, QJsonObject());
+    NetworkManager::instance()->sendJson(root);
+}
+
+void FlightsPage::sendFlightSearch(const QString& from, const QString& to, const QDate& date)
 {
     QJsonObject data;
-    data.insert("fromCity", ui->comboDep->currentText());
-    data.insert("toCity", ui->comboDest->currentText());
-    data.insert("date", ui->dateEdit->date().toString(Qt::ISODate));
+    data.insert("fromCity", from);
+    data.insert("toCity", to);
+    data.insert("date", date.toString(Qt::ISODate));
 
     QJsonObject root;
     root.insert(Protocol::KEY_TYPE, Protocol::TYPE_FLIGHT_SEARCH);
     root.insert(Protocol::KEY_DATA, data);
 
     NetworkManager::instance()->sendJson(root);
+}
+
+void FlightsPage::on_btnSearch_clicked()
+{
+    const QString from = ui->comboDep->currentText().trimmed();
+    const QString to   = ui->comboDest->currentText().trimmed();
+    const QDate date   = ui->dateEdit->date();
+
+    // 每次查询航班都先拉城市列表
+    m_waitingCityListForSearch = true;
+    m_pendingFromCity = from;
+    m_pendingToCity = to;
+    m_pendingDate = date;
+
+    requestCityList();
 }
 
 void FlightsPage::on_btnBook_clicked()
@@ -109,7 +144,76 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         return;
     }
 
-    // 2. 处理查询结果
+    // 2. 城市列表返回：填充combo
+    if (type == Protocol::TYPE_CITY_LIST_RESP) {
+        const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
+        const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+        if (!ok) {
+            m_cityListLoaded = false;
+
+            if (m_waitingCityListForSearch) {
+                m_waitingCityListForSearch = false;
+                QMessageBox::warning(this, "城市列表", msg);
+
+                // 继续查航班（用当前combo的值，或者pending）
+                const QString from = ui->comboDep->currentText().trimmed().isEmpty() ? m_pendingFromCity : ui->comboDep->currentText().trimmed();
+                const QString to   = ui->comboDest->currentText().trimmed().isEmpty() ? m_pendingToCity : ui->comboDest->currentText().trimmed();
+                sendFlightSearch(from, to, m_pendingDate);
+            }
+            return;
+        }
+
+        QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
+        QList<QString> fromCities = Common::citiesFromJsonArray(dataObj.value("fromCities").toArray());
+        QList<QString> toCities   = Common::citiesFromJsonArray(dataObj.value("toCities").toArray());
+
+        // 记录旧选中，尽量保持用户选择
+        const QString oldFrom = ui->comboDep->currentText();
+        const QString oldTo   = ui->comboDest->currentText();
+
+        ui->comboDep->blockSignals(true);
+        ui->comboDest->blockSignals(true);
+
+        ui->comboDep->clear();
+        for (const auto &c : fromCities) ui->comboDep->addItem(c);
+
+        ui->comboDest->clear();
+        for (const auto &c : toCities) ui->comboDest->addItem(c);
+
+        // 恢复旧选择
+        int idxFrom = ui->comboDep->findText(oldFrom);
+        if (idxFrom >= 0) ui->comboDep->setCurrentIndex(idxFrom);
+
+        int idxTo = ui->comboDest->findText(oldTo);
+        if (idxTo >= 0) ui->comboDest->setCurrentIndex(idxTo);
+
+        ui->comboDep->blockSignals(false);
+        ui->comboDest->blockSignals(false);
+
+        m_cityListLoaded = true;
+
+        // 如果这是“为了查航班而拉城市”，这里继续发 flight_search
+        if (m_waitingCityListForSearch) {
+            m_waitingCityListForSearch = false;
+
+            // 尝试把 pending 的城市设回去（如果存在）
+            int pFrom = ui->comboDep->findText(m_pendingFromCity);
+            if (pFrom >= 0) ui->comboDep->setCurrentIndex(pFrom);
+
+            int pTo = ui->comboDest->findText(m_pendingToCity);
+            if (pTo >= 0) ui->comboDest->setCurrentIndex(pTo);
+
+            ui->dateEdit->setDate(m_pendingDate);
+
+            sendFlightSearch(ui->comboDep->currentText(),
+                             ui->comboDest->currentText(),
+                             ui->dateEdit->date());
+        }
+        return;
+    }
+
+    // 3. 处理查询结果
     if (type == Protocol::TYPE_FLIGHT_SEARCH_RESP) {
         QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
         QJsonArray flightsArr = dataObj.value("flights").toArray();
