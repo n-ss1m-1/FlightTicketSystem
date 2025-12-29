@@ -513,10 +513,11 @@ DBResult DBManager::getCityList(QList<QString>& fromCities,QList<QString>& toCit
 }
 
 //订单
-DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
+//创建订单
+DBResult DBManager::createOrder(Common::OrderInfo& order,bool autoManageTransaction,QString* errMsg)
 {
     //开启事务
-    if(!beginTransaction())
+    if(autoManageTransaction && !beginTransaction())
     {
         if(errMsg) *errMsg="开启事务失败";
         return DBResult::TransactionFailed;
@@ -531,7 +532,7 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     //座位不足 or 更新失败
     if(seatAffected<=0)
     {
-        rollbackTransaction();
+        if(autoManageTransaction) rollbackTransaction();
         if(errMsg)
         {
             QString detail=!(*errMsg).isEmpty()?*errMsg:"无可用座位";
@@ -547,7 +548,7 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
 
     if(searchFlights(cond,flights,errMsg)!=DBResult::Success)
     {
-        rollbackTransaction();
+        if(autoManageTransaction) rollbackTransaction();
         if (errMsg) *errMsg = "获取航班信息失败: " + *errMsg;
         return DBResult::QueryFailed;
     }
@@ -565,21 +566,21 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
     //6.插入订单数据
     QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,pending_payment,status) values(?,?,?,?,?,?,?,?)";
     QList<QVariant>orderParams;
-    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<order.priceCents<<static_cast<int>(order.status);
+    orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<order.pendingPayment<<static_cast<int>(order.status);
 
     QSqlQuery orderQuery=Query(orderSql,orderParams,errMsg);
     if(!orderQuery.isActive())
     {
-        rollbackTransaction();
+        if(autoManageTransaction) rollbackTransaction();
         return DBResult::QueryFailed;
     }
     //7.获取新订单ID
     order.id=orderQuery.lastInsertId().toLongLong();
 
     //8.提交事务/中途事务回滚
-    if(!commitTransaction())
+    if(autoManageTransaction && !commitTransaction())
     {
-        rollbackTransaction();
+        if(autoManageTransaction) rollbackTransaction();
         if(errMsg) *errMsg="提交事务失败";
         return DBResult::TransactionFailed;
     }
@@ -674,12 +675,81 @@ DBResult DBManager::getOrdersByRealName(const QString& realName,const QString& i
 
     return ordersAndflights.isEmpty()? DBResult::NoData : DBResult::Success;
 }
-DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
+//改签
+DBResult DBManager::rescheduleOrder(Common::OrderInfo& oriOrder,Common::OrderInfo& newOrder,qint32& priceDif,QString* errMsg)
 {
     //开启事务
     if(!beginTransaction())
     {
         if(errMsg) *errMsg="开启事务失败";
+        return DBResult::TransactionFailed;
+    }
+
+    //已支付金额=原价-待支付金额
+    qint32 oriPaidAmount=oriOrder.priceCents-oriOrder.pendingPayment;
+
+    //取消订单
+    DBResult res=this->cancelOrder(oriOrder.id,false,errMsg);
+    if(res != DBResult::Success)
+    {
+        if(errMsg) *errMsg=*errMsg+" 取消订单失败";
+        rollbackTransaction();
+        return res;
+    }
+
+    //创建订单
+    res=this->createOrder(newOrder,false,errMsg);
+    if(res != DBResult::Success)
+    {
+        if(errMsg) *errMsg=*errMsg+" 创建新订单失败";
+        rollbackTransaction();
+        return res;
+    }
+
+    //差价=新订单价格(创建订单后才有实际价格)-已支付价格
+    priceDif=newOrder.priceCents-oriPaidAmount;
+    //新订单待支付金额=max(0,差价)  避免被createOrder内部初始化覆盖
+    newOrder.pendingPayment=qMax(0,priceDif);
+
+    //更新新订单的pendingPayment(因为createOrder覆盖了 此处需同步到数据库)
+    QString updatePendingSql = "update orders set pending_payment=? where id=?";
+    QList<QVariant> updateParams;
+    updateParams<<newOrder.pendingPayment<<newOrder.id;
+    int updateAffected = update(updatePendingSql, updateParams, errMsg);
+    if(updateAffected<=0)
+    {
+        if(errMsg) *errMsg=*errMsg+" 新订单待支付金额更新失败";
+    }
+
+    //更新新订单状态为Rescheduled
+    newOrder.status = Common::OrderStatus::Rescheduled;
+    QString updateStatusSql = "update orders set status=? where id=?";
+    QList<QVariant> statusParams;
+    statusParams << static_cast<int>(newOrder.status) << newOrder.id;
+    int statusAffected = update(updateStatusSql, statusParams, errMsg);
+    if(statusAffected <= 0)
+    {
+        if(errMsg) *errMsg=*errMsg+" 新订单状态更新失败";
+    }
+
+
+    //提交事务
+    if(!commitTransaction())
+    {
+        rollbackTransaction();
+        if(errMsg) *errMsg="提交事务失败";
+        return DBResult::TransactionFailed;
+    }
+
+    return DBResult::Success;
+}
+//取消订单
+DBResult DBManager::cancelOrder(qint64 orderId,bool autoManageTransaction,QString* errMsg)
+{
+    //开启事务
+    if(autoManageTransaction && !beginTransaction())
+    {
+        if(errMsg) *errMsg=*errMsg+" 开启事务失败";
         return DBResult::TransactionFailed;
     }
 
@@ -691,8 +761,8 @@ DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
     int orderAffected=update(orderSql,orderParams,errMsg);
     if(orderAffected<=0)
     {
-        rollbackTransaction();
-        if(errMsg) *errMsg="订单状态更新失败或订单已取消";
+        if(autoManageTransaction) rollbackTransaction();
+        if(errMsg) *errMsg=*errMsg+" 订单状态更新失败或订单已取消";
         return DBResult::QueryFailed;
     }
 
@@ -704,14 +774,14 @@ DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
     //执行查询并校验是否成功
     QSqlQuery flightQuery=Query(flightSql, flightParams, errMsg);
     if(!flightQuery.isActive()) {
-        rollbackTransaction();
-        if (errMsg) *errMsg = "查询航班ID失败：" + (errMsg->isEmpty() ? "SQL执行错误" : *errMsg);
+        if(autoManageTransaction) rollbackTransaction();
+        if (errMsg) *errMsg = *errMsg+" 查询航班ID失败：" + (errMsg->isEmpty() ? "SQL执行错误" : *errMsg);
         return DBResult::QueryFailed;
     }
     //!!!调用next()定位到有效记录
     if (!flightQuery.next()) {
-        rollbackTransaction();
-        if (errMsg) *errMsg = "未找到订单[" + QString::number(orderId) + "]关联的航班信息";
+        if(autoManageTransaction) rollbackTransaction();
+        if (errMsg) *errMsg = *errMsg+" 未找到订单[" + QString::number(orderId) + "]关联的航班信息";
         return DBResult::NoData;
     }
 
@@ -725,16 +795,16 @@ DBResult DBManager::cancelOrder(qint64 orderId,QString* errMsg)
     int seatAffected=update(seatSql,seatParams,errMsg);
     if(seatAffected<=0)
     {
-        rollbackTransaction();
-        if(errMsg) *errMsg="航班座位恢复失败";
+        if(autoManageTransaction) rollbackTransaction();
+        if(errMsg) *errMsg=*errMsg+" 航班座位恢复失败";
         return DBResult::QueryFailed;
     }
 
     //4.提交事务
-    if(!commitTransaction())
+    if(autoManageTransaction && !commitTransaction())
     {
-        rollbackTransaction();
-        if(errMsg) *errMsg="提交事务失败";
+        if(autoManageTransaction) rollbackTransaction();
+        if(errMsg) *errMsg=*errMsg+" 提交事务失败";
         return DBResult::TransactionFailed;
     }
 

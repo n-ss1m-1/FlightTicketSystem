@@ -72,12 +72,12 @@ public:
     DBResult getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg=nullptr);
 
     //订单                    //order作为传出参数
-    DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
+    DBResult createOrder(Common::OrderInfo& order,bool autoManageTransaction=true,QString* errMsg=nullptr);
     DBResult payForOrder(qint64 orderId,QString* errMsg=nullptr);     //修改订单状态->已支付
     DBResult getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);
     DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);     //本人订单
-    //DBResult rescheduleOrder(qint64 oriOrderId,qint64 newOrderId,QString* errMsg=nullptr);
-    DBResult cancelOrder(qint64 orderId,QString* errMsg=nullptr);
+    DBResult rescheduleOrder(Common::OrderInfo& oriOrder,Common::OrderInfo& newOrder,qint32& priceDif,QString* errMsg=nullptr);
+    DBResult cancelOrder(qint64 orderId,bool autoManageTransaction=true,QString* errMsg=nullptr);
 
 private:
     DBManager();       //单例模式

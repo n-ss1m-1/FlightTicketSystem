@@ -421,6 +421,27 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"航班查询失败:"+errMsg));
         }
     }
+    //获取城市列表
+    else if(type == Protocol::TYPE_CITY_LIST)
+    {
+        qInfo()<<"get cityList request";
+
+        QList<QString> fromCities,toCities;
+
+        DBResult res=db.getCityList(fromCities,toCities,&errMsg);
+
+        if(res == DBResult::Success)
+        {
+            QJsonObject respData;
+            respData.insert("fromCities",Common::citiesToJsonArray(fromCities));
+            respData.insert("toCities",Common::citiesToJsonArray(toCities));
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_CITY_LIST_RESP,respData,QString("查询城市列表成功")));
+        }
+        else
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_CITY_LIST_RESP,QString("查询城市列表失败:")+errMsg));
+        }
+    }
     //创建订单
     else if(type == Protocol::TYPE_ORDER_CREATE)
     {
@@ -457,7 +478,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        qInfo() << "create order request: from username:" << username << "flightId" << order.flightId << "passengerName" << order.passengerName << "passengerIdCard" <<order.passengerIdCard;
+        qInfo() << "create order request: from username:" << username << "(flightId:" << order.flightId << "passengerName:" << order.passengerName << "passengerIdCard:" <<order.passengerIdCard<<")";
 
         DBResult res=db.createOrder(order,&errMsg);
         if(res == DBResult::Success)
@@ -498,27 +519,6 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         {
             qCritical()<<"pay for order error:"<<errMsg;
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单支付失败:"+errMsg));
-        }
-    }
-    //获取城市列表
-    else if(type == Protocol::TYPE_CITY_LIST)
-    {
-        qInfo()<<"get cityList request";
-
-        QList<QString> fromCities,toCities;
-
-        DBResult res=db.getCityList(fromCities,toCities,&errMsg);
-
-        if(res == DBResult::Success)
-        {
-            QJsonObject respData;
-            respData.insert("fromCities",Common::citiesToJsonArray(fromCities));
-            respData.insert("toCities",Common::citiesToJsonArray(toCities));
-            sendJson(Protocol::makeOkResponse(Protocol::TYPE_CITY_LIST_RESP,respData,QString("查询城市列表成功")));
-        }
-        else
-        {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_CITY_LIST_RESP,QString("查询城市列表失败:")+errMsg));
         }
     }
     //查询用户所有订单(根据userId) --- 已支付订单
@@ -588,6 +588,60 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单查询失败:"+errMsg));
         }
 
+    }
+    //订单改签
+    else if(type == Protocol::TYPE_ORDER_RESCHEDULE)
+    {
+        //检查用户是否真正登陆 避免非法JSON构造
+        if(!isLoggedIn())
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "请先登录"));
+            return;
+        }
+
+        //需要客户端传入：oriOrder(原订单) + 新订单的:flight_id,passenger_name,passenger_id_card
+        Common::UserInfo user=userManager.getUserInfoByHandler(this);
+        const QString username=user.username;
+        Common::OrderInfo oriOrder=Common::orderFromJson(data.value("oriOrder").toObject());
+        Common::OrderInfo newOrder;
+        newOrder.userId=user.id;
+        newOrder.flightId=data.value("flightId").toVariant().toLongLong();
+        newOrder.passengerName=data.value("passengerName").toString();
+        newOrder.passengerIdCard=data.value("passengerIdCard").toString();
+        if(oriOrder.userId!=newOrder.userId) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "无权限改签他人订单"));
+            return;
+        }
+        if (newOrder.flightId<=0) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "航班id不能<=0"));
+            return;
+        }
+        if (newOrder.passengerName.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "乘客姓名不能为空"));
+            return;
+        }
+        if (newOrder.passengerIdCard.isEmpty()) {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "乘客IdCard不能为空"));
+            return;
+        }
+
+        qInfo() << "order reschedule request: from username:" << username << " to new order: (flightId:" << newOrder.flightId << "passengerName:" << newOrder.passengerName << "passengerIdCard:" <<newOrder.passengerIdCard<<")";
+
+        qint32 priceDif=0;
+        DBResult res=db.rescheduleOrder(oriOrder,newOrder,priceDif,&errMsg);
+        if(res == DBResult::Success)
+        {
+            QJsonObject orderObj = Common::orderToJson(newOrder);
+            QJsonObject respData;
+            respData.insert("order",orderObj);              //包含新order的所有信息
+            respData.insert("priceDif",priceDif);           //差价：正->需要客户支付的  负->需要补给客户的
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_ORDER_RESCHEDULE_RESP,respData,QString("订单改签成功,新订单号：%1").arg(newOrder.id)));
+        }
+        else
+        {
+            qCritical()<<"order reschedule error:"<<errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单改签失败:"+errMsg));
+        }
     }
     //取消订单(根据userId和orderId) 注意：仅Booked状态的订单可以取消
     else if(type == Protocol::TYPE_ORDER_CANCEL)
