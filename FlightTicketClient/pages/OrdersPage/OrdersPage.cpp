@@ -182,37 +182,38 @@ void OrdersPage::on_btnRefresh_clicked() {
     loadOrders();
 }
 
-void OrdersPage::on_btnCancel_clicked() {
-    int row = ui->tableOrders->currentIndex().row();
-    if (row < 0) {
-        QMessageBox::warning(this, "提示", "请先选择要取消的订单！");
-        return;
-    }
+// 取消功能移至详情页面
+// void OrdersPage::on_btnCancel_clicked() {
+//     int row = ui->tableOrders->currentIndex().row();
+//     if (row < 0) {
+//         QMessageBox::warning(this, "提示", "请先选择要取消的订单！");
+//         return;
+//     }
 
-    // orderId从第一列item的UserRole取
-    QStandardItem *it0 = model->item(row, 0);
-    if (!it0) return;
+//     // orderId从第一列item的UserRole取
+//     QStandardItem *it0 = model->item(row, 0);
+//     if (!it0) return;
 
-    qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
-    if (orderId <= 0) {
-        QMessageBox::warning(this, "提示", "订单ID无效，无法取消。");
-        return;
-    }
+//     qint64 orderId = it0->data(ROLE_ORDER_ID).toLongLong();
+//     if (orderId <= 0) {
+//         QMessageBox::warning(this, "提示", "订单ID无效，无法取消。");
+//         return;
+//     }
 
-    auto reply = QMessageBox::question(this, "确认取消",
-                                       QString("确定要取消订单 %1 吗？").arg(orderId));
-    if (reply != QMessageBox::Yes) return;
+//     auto reply = QMessageBox::question(this, "确认取消",
+//                                        QString("确定要取消订单 %1 吗？").arg(orderId));
+//     if (reply != QMessageBox::Yes) return;
 
-    QJsonObject data;
-    data.insert("username", NetworkManager::instance()->m_username);
-    data.insert("orderId", orderId);
+//     QJsonObject data;
+//     data.insert("username", NetworkManager::instance()->m_username);
+//     data.insert("orderId", orderId);
 
-    QJsonObject root;
-    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CANCEL);
-    root.insert(Protocol::KEY_DATA, data);
+//     QJsonObject root;
+//     root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CANCEL);
+//     root.insert(Protocol::KEY_DATA, data);
 
-    NetworkManager::instance()->sendJson(root);
-}
+//     NetworkManager::instance()->sendJson(root);
+// }
 
 void OrdersPage::onJsonReceived(const QJsonObject &obj)
 {
@@ -254,11 +255,11 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj)
         return;
     }
 
-    if (type == Protocol::TYPE_ORDER_CANCEL_RESP) {
-        QMessageBox::information(this, "成功", "订单已取消");
-        loadOrders();
-        return;
-    }
+    // if (type == Protocol::TYPE_ORDER_CANCEL_RESP) {
+    //     QMessageBox::information(this, "成功", "订单已取消");
+    //     loadOrders();
+    //     return;
+    // }
 }
 
 void OrdersPage::onOrderRowDoubleClicked(const QModelIndex &index)
@@ -277,5 +278,12 @@ void OrdersPage::onOrderRowDoubleClicked(const QModelIndex &index)
 
     OrderDetailDialog dlg(this);
     dlg.setData(e.ord, e.flight, sourceText);
+
+    connect(&dlg, &OrderDetailDialog::orderPaid, this, [&](qint64){
+        loadOrders();
+    });
+    connect(&dlg, &OrderDetailDialog::orderCanceled, this, [&](qint64){
+        loadOrders();
+    });
     dlg.exec();
 }

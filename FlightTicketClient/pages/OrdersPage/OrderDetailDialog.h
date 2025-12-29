@@ -22,11 +22,14 @@ public:
 
 signals:
     void orderPaid(qint64 orderId); // 支付后刷新OrderPage
+    void orderCanceled(qint64 orderId);
 
 private slots:
     void on_btnPay_clicked();
     void on_btnExit_clicked();
     void onJsonReceived(const QJsonObject &obj);
+
+    void on_btnCancel_clicked();
 
 private:
     Ui::OrderDetailDialog *ui;
@@ -42,6 +45,9 @@ private:
 
     bool m_waitingPayResp = false;
     QMetaObject::Connection m_conn;
+
+    bool m_waitingCancelResp = false;
+    void refreshCancelButton();
 };
 
 #endif // ORDERDETAILDIALOG_H
