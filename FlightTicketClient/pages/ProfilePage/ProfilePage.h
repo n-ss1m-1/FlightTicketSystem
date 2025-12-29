@@ -36,6 +36,8 @@ private slots:
 
     void on_btnDelPassenger_clicked();
 
+    void on_cbShowPassengers_toggled(bool checked);
+
 public slots:
     void requestLogin(); // 其他页面调用登录
 

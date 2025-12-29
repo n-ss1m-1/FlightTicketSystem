@@ -187,7 +187,7 @@ void ProfilePage::on_btnLogin_clicked()
         box.exec();
 
         if (box.clickedButton() == btnLogout) {
-            nm->logout();           // ⭐ 统一入口
+            nm->logout();
             updateUserInfoUI();
             updateLoginUI();
 
@@ -409,6 +409,11 @@ void ProfilePage::on_cbShowIdCard_toggled(bool)
     if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
+void ProfilePage::on_cbShowPassengers_toggled(bool)
+{
+    fillPassengerTable(m_passengers);
+}
+
 void ProfilePage::requestLogin()
 {
     on_btnLogin_clicked();
@@ -491,9 +496,19 @@ void ProfilePage::fillPassengerTable(const QList<Common::PassengerInfo>& list)
 
     for (int i = 0; i < list.size(); ++i) {
         const auto &p = list[i];
+        QString name;
+        QString idCard;
+        if(ui->cbShowPassengers->isChecked()){
+            name = p.name;
+            idCard = p.idCard;
+        }
+        else{
+            name = maskMiddle(p.name, 0, 1);
+            idCard = maskMiddle(p.idCard, 4, 4);
+        }
         t->setItem(i, 0, new QTableWidgetItem(QString::number(p.id)));
-        t->setItem(i, 1, new QTableWidgetItem(p.name));
-        t->setItem(i, 2, new QTableWidgetItem(p.idCard));
+        t->setItem(i, 1, new QTableWidgetItem(name));
+        t->setItem(i, 2, new QTableWidgetItem(idCard));
     }
 
     if (list.isEmpty()) {
@@ -513,7 +528,16 @@ bool ProfilePage::validatePassengerInput(const QString& name, const QString& idC
         if (err) *err = "身份证号不能为空";
         return false;
     }
-    // TODO
+    static const QRegularExpression hasLetterOrDigit(R"([A-Za-z0-9])");
+    if (hasLetterOrDigit.match(name).hasMatch()) {
+       if (err) *err = "姓名不能包含字母或数字";
+        return false;
+    }
+    static const QRegularExpression re(R"(^\d{17}(\d|X|x)$)");
+    if (!re.match(idCard).hasMatch()) {
+       if (err) *err = "无效的身份证号";
+        return false;
+    }
     return true;
 }
 
@@ -662,3 +686,5 @@ void ProfilePage::on_btnDelPassenger_clicked()
     req.insert(Protocol::KEY_DATA, data);
     nm->sendJson(req);
 }
+
+
