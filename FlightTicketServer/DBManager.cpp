@@ -367,37 +367,119 @@ DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerIn
 }
 
 //航班                    //flights作为传出参数
-DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights,QString* errMsg)
+// DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights,QString* errMsg)
+// {
+//     QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? order by depart_time asc";    //此处使用sql函数 取出日期
+
+//     QList<QVariant>params;          //转换为数据库date格式->匹配
+//     params<<fromCity<<toCity<<date.toString("yyyy-MM-dd")<<static_cast<int>(Common::FlightStatus::Normal);
+
+//     QSqlQuery query=Query(sql,params,errMsg);
+//     if(!query.isActive()) return DBResult::QueryFailed;
+
+//     //遍历结果集
+//     while(query.next())     //初始位置：-1
+//     {
+//         flights.append(flightFromQuery(query));
+//     }
+
+//     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
+// }
+DBResult DBManager::searchFlights(const Common::FlightQueryCondition& cond,QList<Common::FlightInfo>& flights, QString* errMsg)
 {
-    QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? order by depart_time asc";    //此处使用sql函数 取出日期
+    QString sql="select * from flight";
+    QList<QVariant> params;
+    QStringList whereClauses;   //存储查询条件(where)
 
-    QList<QVariant>params;          //转换为数据库date格式->匹配
-    params<<fromCity<<toCity<<date.toString("yyyy-MM-dd")<<static_cast<int>(Common::FlightStatus::Normal);
+    //动态拼接查询条件
+    if(cond.id!=0)
+    {
+        whereClauses.append("id=?");
+        params.append(cond.id);
+    }
+    if(!cond.fromCity.isEmpty())
+    {
+        whereClauses.append("from_city=?");
+        params.append(cond.fromCity);
+    }
+    if(!cond.toCity.isEmpty())
+    {
+        whereClauses.append("to_city=?");
+        params.append(cond.toCity);
+    }
+    if(cond.maxDepartDate.isValid())
+    {
+        whereClauses.append("date(depart_time)>=?");
+        params.append(cond.minDepartDate.toString("yyyy-MM-dd"));
+    }
+    if(cond.minDepartDate.isValid())
+    {
+        whereClauses.append("date(depart_time)<=?");
+        params.append(cond.minDepartDate.toString("yyyy-MM-dd"));
+    }
+    if(cond.minDepartTime.isValid())
+    {
+        whereClauses.append("time(depart_time)>=?");
+        params.append(cond.minDepartTime.toString("HH:mm"));
+    }
+    if(cond.maxDepartTime.isValid())
+    {
+        whereClauses.append("time(depart_time)<=?");
+        params.append(cond.maxDepartTime.toString("HH:mm"));
+    }
+    if(cond.minPriceCents>0)
+    {
+        whereClauses.append("price_cents>=?");
+        params.append(cond.minPriceCents);
+    }
+    if(cond.maxPriceCents>0 && cond.maxPriceCents>=cond.minPriceCents)
+    {
+        whereClauses.append("price_cents<=?");
+        params.append(cond.maxPriceCents);
+    }
+    whereClauses.append("seat_left>0");
 
+    //拼接完整SQL
+    if(!whereClauses.isEmpty())  sql+=" where " + whereClauses.join(" and ");
+
+    //添加：按起飞时间升序排列
+    sql+=" order by depart_time asc ";
+
+    qInfo() << "(查询航班)拼接后的SQL：" << sql;
+    qInfo() << "查询参数：" << params;
+
+    //执行sql
     QSqlQuery query=Query(sql,params,errMsg);
-    if(!query.isActive()) return DBResult::QueryFailed;
+    if(!query.isActive())
+    {
+        if(errMsg) *errMsg=*errMsg+" 航班查询失败";
+        return DBResult::QueryFailed;
+    }
 
-    //遍历结果集
-    while(query.next())     //初始位置：-1
+    //解析结果
+    flights.clear();
+    flights.reserve(query.size());
+
+    while(query.next())
     {
         flights.append(flightFromQuery(query));
     }
 
     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
 }
-DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg)
-{
-    QString sql="select * from flight where id=?";
-    QList<QVariant>params;
-    params<<flightId;
+// DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg)
+// {
+//     QString sql="select * from flight where id=?";
+//     QList<QVariant>params;
+//     params<<flightId;
 
-    QSqlQuery query=Query(sql,params,errMsg);
-    if(!query.isActive()) return DBResult::QueryFailed;
-    if(!query.next()) return DBResult::NoData;
+//     QSqlQuery query=Query(sql,params,errMsg);
+//     if(!query.isActive()) return DBResult::QueryFailed;
+//     if(!query.next()) return DBResult::NoData;
 
-    flight=flightFromQuery(query);
-    return DBResult::Success;
-}
+//     flight=flightFromQuery(query);
+//     return DBResult::Success;
+// }
 
 //获取城市列表
 DBResult DBManager::getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg)
@@ -456,33 +538,29 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
         return DBResult::QueryFailed;
     }
 
-    //2.更新订单座位
-    Common::FlightInfo flight;
-    if(getFlightById(order.flightId, flight, errMsg)!=DBResult::Success)
+    //2.通过flightId查询航班
+    QList<Common::FlightInfo> flights;
+    Common::FlightQueryCondition cond;
+    cond.id=order.flightId;
+
+    if(searchFlights(cond,flights,errMsg)!=DBResult::Success)
     {
         rollbackTransaction();
         if (errMsg) *errMsg = "获取航班信息失败: " + *errMsg;
         return DBResult::QueryFailed;
     }
+    Common::FlightInfo flight=flights[0];
+
+    //3.更新订单座位
     order.seatNum=QString::number(flight.seatTotal-flight.seatLeft+1);
 
-    //3.通过flightId查询订单价格
-    QString priceSql="select price_cents from flight where id=?";
-    QList<QVariant> priceParams;
-    priceParams<<order.flightId;
-    QSqlQuery priceQuery=Query(priceSql, priceParams, errMsg);
-    if(!priceQuery.isActive() || !priceQuery.next())
-    {
-        rollbackTransaction();
-        if (errMsg) *errMsg="查询航班价格失败: 无该航班价格信息";
-        return DBResult::QueryFailed;
-    }
-    order.priceCents=priceQuery.value("price_cents").toInt();
+    //4.初始化订单价格
+    order.priceCents=flight.priceCents;
 
-    //4.初始化订单状态：0 Booked
+    //5.初始化订单状态：0 Booked
     order.status=Common::OrderStatus::Booked;
 
-    //5.插入订单数据
+    //6.插入订单数据
     QString orderSql="insert into orders (user_id,flight_id,passenger_name,passenger_id_card,seat_num,price_cents,status) values(?,?,?,?,?,?,?)";
     QList<QVariant>orderParams;
     orderParams<<order.userId<<order.flightId<<order.passengerName<<order.passengerIdCard<<order.seatNum<<order.priceCents<<static_cast<int>(order.status);
@@ -493,10 +571,10 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)
         rollbackTransaction();
         return DBResult::QueryFailed;
     }
-    //6.获取新订单ID
+    //7.获取新订单ID
     order.id=orderQuery.lastInsertId().toLongLong();
 
-    //7.提交事务/中途事务回滚
+    //8.提交事务/中途事务回滚
     if(!commitTransaction())
     {
         rollbackTransaction();

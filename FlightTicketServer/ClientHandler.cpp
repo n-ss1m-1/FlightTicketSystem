@@ -342,7 +342,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,QString("删除常用乘机人失败:")+errMsg));
         }
     }
-    //根据出发地+目的地+日期查询航班
+    //自定义条件查询航班
     else if(type == Protocol::TYPE_FLIGHT_SEARCH)
     {
         if(!isLoggedIn())
@@ -351,29 +351,58 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        const QString fromCity=data.value("fromCity").toString();
-        const QString toCity=data.value("toCity").toString();
-        const QDate date=QDate::fromString(data.value("date").toString(), Qt::ISODate);
+        //获取查询条件
+        Common::FlightQueryCondition cond;
+        //解析出发地
+        if(data.contains("fromCity")) cond.fromCity=data.value("fromCity").toString().trimmed();
+        //解析目的地
+        if(data.contains("toCity")) cond.toCity=data.value("toCity").toString().trimmed();
+        //解析时间
+        if(data.contains("date") && data["date"].isObject())
+        {
+            QJsonObject dateObj = data["date"].toObject();      //date为QJsonObject类型
 
-        qInfo() << "search flights request: from" << fromCity << "to" << toCity << "date" << date.toString(Qt::ISODate);
+            //解析minDepartDate
+            if(dateObj.contains("minDepartDate") && !dateObj["minDepartDate"].toString().isEmpty())
+            {
+                QString minDateStr = dateObj["minDepartDate"].toString().trimmed();
+                cond.minDepartDate = QDate::fromString(minDateStr, "yyyy-MM-dd");   //约定日期格式：yyyy-MM-dd
+            }
+            //解析maxDepartDate
+            if(dateObj.contains("maxDepartDate") && !dateObj["maxDepartDate"].toString().isEmpty())
+            {
+                QString maxDateStr = dateObj["maxDepartDate"].toString().trimmed();
+                cond.maxDepartDate = QDate::fromString(maxDateStr, "yyyy-MM-dd");   //约定日期格式：yyyy-MM-dd
+            }
+            //解析minDepartTime
+            if(dateObj.contains("minDepartTime") && !dateObj["minDepartTime"].toString().isEmpty())
+            {
+                QString minTimeStr = dateObj["minDepartTime"].toString().trimmed();
+                cond.minDepartTime = QTime::fromString(minTimeStr, "HH:mm");        //约定时间格式：HH:mm
+            }
+            //解析maxDepartTime
+            if(dateObj.contains("maxDepartTime") && !dateObj["maxDepartTime"].toString().isEmpty())
+            {
+                QString maxTimeStr = dateObj["maxDepartTime"].toString().trimmed();
+                cond.maxDepartTime = QTime::fromString(maxTimeStr, "HH:mm");        //约定时间格式：HH:mm
+            }
+            if(cond.minDepartDate.isValid() && cond.maxDepartDate.isValid() && cond.maxDepartDate < cond.minDepartDate)
+            {
+                sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "无效日期区间:最大日期不能小于最小日期"));
+                return;
+            }
+        }
+        //解析最低价格
+        if(data.contains("minPriceCents")) cond.minPriceCents=data.value("minPriceCents").toInt();
+        //解析最高价格
+        if(data.contains("maxPriceCents")) cond.maxPriceCents=data.value("maxPriceCents").toInt();
 
-        if (fromCity.isEmpty()) {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "出发城市不能为空"));
-            return;
-        }
-        if (toCity.isEmpty()) {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "到达城市不能为空"));
-            return;
-        }
-        if (!date.isValid()) {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "查询日期格式无效"));
-            return;
-        }
+        qInfo() << "search flights request ";
 
         //查询航班信息
         QList<Common::FlightInfo> flights;
 
-        DBResult res = db.searchFlights(fromCity,toCity,date,flights,&errMsg);
+        DBResult res = db.searchFlights(cond,flights,&errMsg);
         if(res == DBResult::Success)
         {
             QJsonArray flightsArr = Common::flightsToJsonArray(flights);

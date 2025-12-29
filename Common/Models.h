@@ -83,6 +83,21 @@ struct FlightInfo {
     FlightStatus status = FlightStatus::Normal; // 航班状态
 };
 
+// 查询航班条件
+struct FlightQueryCondition
+{
+    qint64 id;
+    QString fromCity;
+    QString toCity;
+    QDate minDepartDate;
+    QDate maxDepartDate;
+    QTime minDepartTime;
+    QTime maxDepartTime;
+    int minPriceCents;
+    int maxPriceCents;
+    FlightQueryCondition():id(0),minPriceCents(0),maxPriceCents(0){}
+};
+
 // 用户信息
 struct UserInfo {
     qint64 id = 0;                 // 用户ID（数据库主键）
