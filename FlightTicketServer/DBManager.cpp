@@ -399,6 +399,34 @@ DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QSt
     return DBResult::Success;
 }
 
+//获取城市列表
+DBResult DBManager::getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg)
+{
+    QString fromSql="select distinct from_city from flight";
+    QList<QVariant>params;
+    QSqlQuery fromQuery=Query(fromSql,params,errMsg);
+    if(!fromQuery.isActive()) return DBResult::QueryFailed;
+    while(fromQuery.next())     //初始位置：-1
+    {
+        fromCities.append(fromQuery.value("from_city").toString());
+    }
+
+    QString toSql="select distinct to_city from flight";
+    QSqlQuery toQuery=Query(toSql,params,errMsg);
+    if(!toQuery.isActive()) return DBResult::QueryFailed;
+    while(toQuery.next())     //初始位置：-1
+    {
+        toCities.append(toQuery.value("to_city").toString());
+    }
+
+    if(fromCities.empty() && toCities.empty())
+    {
+        if(errMsg) *errMsg=*errMsg+"未查询到数据";
+        return DBResult::NoData;
+    }
+
+    return DBResult::Success;
+}
 
 //订单
 DBResult DBManager::createOrder(Common::OrderInfo& order,QString* errMsg)

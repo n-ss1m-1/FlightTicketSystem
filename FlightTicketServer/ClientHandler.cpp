@@ -471,6 +471,27 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"订单支付失败:"+errMsg));
         }
     }
+    //获取城市列表
+    else if(type == Protocol::TYPE_CITY_LIST)
+    {
+        qInfo()<<"get cityList request";
+
+        QList<QString> fromCities,toCities;
+
+        DBResult res=db.getCityList(fromCities,toCities,&errMsg);
+
+        if(res == DBResult::Success)
+        {
+            QJsonObject respData;
+            respData.insert("fromCities",Common::citiesToJsonArray(fromCities));
+            respData.insert("toCities",Common::citiesToJsonArray(toCities));
+            sendJson(Protocol::makeOkResponse(Protocol::TYPE_CITY_LIST_RESP,respData,QString("查询城市列表成功")));
+        }
+        else
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_CITY_LIST_RESP,QString("查询城市列表失败:")+errMsg));
+        }
+    }
     //查询用户所有订单(根据userId) --- 已支付订单
     else if(type == Protocol::TYPE_ORDER_LIST)
     {

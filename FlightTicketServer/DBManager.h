@@ -67,6 +67,9 @@ public:
     DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
 
+    //城市列表
+    DBResult getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg=nullptr);
+
     //订单                    //order作为传出参数
     DBResult createOrder(Common::OrderInfo& order,QString* errMsg=nullptr);
     DBResult payForOrder(qint64 orderId,QString* errMsg=nullptr);     //修改订单状态->已支付

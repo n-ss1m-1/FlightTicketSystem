@@ -64,6 +64,11 @@ static const QString TYPE_UPDATE_INFO_RESP = "update_info_response";
 static const QString TYPE_FLIGHT_SEARCH      = "flight_search";
 static const QString TYPE_FLIGHT_SEARCH_RESP = "flight_search_response";
 
+// ======================== 城市 ========================
+
+static const QString TYPE_CITY_LIST      = "city_list";
+static const QString TYPE_CITY_LIST_RESP = "city_list_response";
+
 // ======================== 订单 ========================
 
 // 下单

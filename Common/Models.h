@@ -39,10 +39,11 @@ enum class FlightStatus : qint32 {
 };
 
 enum class OrderStatus : qint32 {
-    Booked   = 0,   // 已预订
-    Paid     = 1,   // 已支付
-    Canceled = 2,   // 已取消/退票
-    Finished = 3    // 已完成
+    Booked      = 0,   // 已预订
+    Paid        = 1,   // 已支付
+    Rescheduled = 2,   // 已改签
+    Canceled    = 3,   // 已取消/退票
+    Finished    = 4    // 已完成
 };
 
 // ======================== 通用工具函数 ========================
@@ -165,6 +166,24 @@ inline QList<FlightInfo> flightsFromJsonArray(const QJsonArray &arr)
     list.reserve(arr.size());
     for (const auto &v : arr) {
         if (v.isObject()) list.push_back(flightFromJson(v.toObject()));
+    }
+    return list;
+}
+
+// -------- 城市 City <-> JSON --------
+inline QJsonArray citiesToJsonArray(const QList<QString> &list)
+{
+    QJsonArray arr;
+    for (const auto &c : list) if(!c.isEmpty()) arr.append(c);
+    return arr;
+}
+
+inline QList<QString> citiesFromJsonArray(const QJsonArray &arr)
+{
+    QList<QString> list;
+    list.reserve(arr.size());
+    for (const auto &v : arr) {
+        if (v.isString()) list.push_back(v.toString());
     }
     return list;
 }
