@@ -93,9 +93,11 @@ void OrderDetailDialog::setData(const Common::OrderInfo &ord,
     ui->lblDepartTime->setText(dtToText(flt.departTime));
     ui->lblArriveTime->setText(dtToText(flt.arriveTime));
 
-    // 根据状态更新支付按钮
+    // 根据状态更新按钮
     m_waitingPayResp = false;
+    m_waitingCancelResp = false;
     refreshPayButton();
+    refreshCancelButton();
 }
 
 void OrderDetailDialog::on_btnPay_clicked()
@@ -136,9 +138,35 @@ void OrderDetailDialog::on_btnExit_clicked()
 
 void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
 {
-    if (!m_waitingPayResp) return;
-
     const QString type = obj.value(Protocol::KEY_TYPE).toString();
+
+    // 取消订单
+    if (m_waitingCancelResp) {
+        if (type == Protocol::TYPE_ERROR) {
+            m_waitingCancelResp = false;
+            refreshPayButton();
+            refreshCancelButton();
+            QMessageBox::critical(this, "取消失败", obj.value(Protocol::KEY_MESSAGE).toString());
+            return;
+        }
+
+        if (type == Protocol::TYPE_ORDER_CANCEL_RESP) {
+            m_waitingCancelResp = false;
+
+            // 本地更新状态
+            m_ord.status = Common::OrderStatus::Canceled;
+            ui->lblStatus->setText(statusToText(m_ord.status));
+            refreshPayButton();
+            refreshCancelButton();
+
+            QMessageBox::information(this, "成功", obj.value(Protocol::KEY_MESSAGE).toString());
+            emit orderCanceled(m_ord.id);
+            accept();
+            return;
+        }
+    }
+
+    if (!m_waitingPayResp) return;
 
     // 支付失败
     if (type == Protocol::TYPE_ERROR) {
@@ -165,3 +193,75 @@ void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
         return;
     }
 }
+
+void OrderDetailDialog::refreshCancelButton()
+{
+    bool enable = false;
+    QString text = "不可取消";
+
+    if (NetworkManager::instance()->m_username.isEmpty()) {
+        enable = false;
+        text = "未登录不可取消订单";
+    } else if (m_ord.status == Common::OrderStatus::Canceled) {
+        enable = false;
+        text = "已退票不可取消订单";
+    } else if (m_ord.status == Common::OrderStatus::Finished) {
+        enable = false;
+        text = "已完成不可取消订单";
+    } else if (m_ord.status == Common::OrderStatus::Rescheduled) {
+        enable = false;
+        text = "已改签不可取消订单";
+    } else {
+        enable = !m_waitingCancelResp && !m_waitingPayResp;
+        text = m_waitingCancelResp ? "取消中..." : "取消订单";
+    }
+
+    ui->btnCancel->setEnabled(enable);
+    ui->btnCancel->setText(text);
+}
+
+void OrderDetailDialog::on_btnCancel_clicked()
+{
+    if (NetworkManager::instance()->m_username.isEmpty()) {
+        QMessageBox::warning(this, "提示", "未登录，无法取消订单。");
+        refreshCancelButton();
+        return;
+    }
+
+    if (m_ord.status == Common::OrderStatus::Canceled) {
+        QMessageBox::information(this, "提示", "该订单已退票。");
+        refreshCancelButton();
+        return;
+    }
+
+    if (m_ord.status == Common::OrderStatus::Finished) {
+        QMessageBox::warning(this, "提示", "该订单已完成，无法取消。");
+        refreshCancelButton();
+        return;
+    }
+
+    if (m_ord.status == Common::OrderStatus::Rescheduled) {
+        QMessageBox::warning(this, "提示", "该订单已改签，无法取消。");
+        refreshCancelButton();
+        return;
+    }
+
+    auto reply = QMessageBox::question(this, "确认取消",
+                                       QString("确定要取消订单 %1 吗？").arg(m_ord.id));
+    if (reply != QMessageBox::Yes) return;
+
+    m_waitingCancelResp = true;
+    refreshPayButton();
+    refreshCancelButton();
+
+    QJsonObject data;
+    data.insert("username", NetworkManager::instance()->m_username);
+    data.insert("orderId", static_cast<qint64>(m_ord.id));
+
+    QJsonObject root;
+    root.insert(Protocol::KEY_TYPE, Protocol::TYPE_ORDER_CANCEL);
+    root.insert(Protocol::KEY_DATA, data);
+
+    NetworkManager::instance()->sendJson(root);
+}
+

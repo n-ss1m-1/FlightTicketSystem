@@ -24,7 +24,6 @@ protected:
 
 private slots:
     void on_btnRefresh_clicked();
-    void on_btnCancel_clicked();
     void onJsonReceived(const QJsonObject &obj);
 
     void onOrderRowDoubleClicked(const QModelIndex &index);

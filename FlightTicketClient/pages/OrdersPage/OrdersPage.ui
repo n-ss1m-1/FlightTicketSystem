@@ -23,13 +23,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="btnCancel">
-       <property name="text">
-        <string>取消订单</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
    <item>
