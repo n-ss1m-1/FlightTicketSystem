@@ -64,8 +64,9 @@ public:
     DBResult delPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
     DBResult getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg);
     //航班                    //flights作为传出参数
-    DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
-    DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
+    // DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
+    DBResult searchFlights(const Common::FlightQueryCondition& cond,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
+    // DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
 
     //城市列表
     DBResult getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg=nullptr);
@@ -75,6 +76,7 @@ public:
     DBResult payForOrder(qint64 orderId,QString* errMsg=nullptr);     //修改订单状态->已支付
     DBResult getOrdersByUserId(qint64 userId,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);
     DBResult getOrdersByRealName(const QString& realName,const QString& idCard,QList<QPair<Common::OrderInfo,Common::FlightInfo>>& ordersAndflights,QString* errMsg=nullptr);     //本人订单
+    //DBResult rescheduleOrder(qint64 oriOrderId,qint64 newOrderId,QString* errMsg=nullptr);
     DBResult cancelOrder(qint64 orderId,QString* errMsg=nullptr);
 
 private:
