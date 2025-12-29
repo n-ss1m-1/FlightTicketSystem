@@ -187,7 +187,7 @@ void ProfilePage::on_btnLogin_clicked()
         box.exec();
 
         if (box.clickedButton() == btnLogout) {
-            nm->logout();           // ⭐ 统一入口
+            nm->logout();
             updateUserInfoUI();
             updateLoginUI();
 
@@ -409,6 +409,11 @@ void ProfilePage::on_cbShowIdCard_toggled(bool)
     if (NetworkManager::instance()->isLoggedIn()) applyPrivacyMask();
 }
 
+void ProfilePage::on_cbShowPassengers_toggled(bool)
+{
+    fillPassengerTable(m_passengers);
+}
+
 void ProfilePage::requestLogin()
 {
     on_btnLogin_clicked();
@@ -491,9 +496,19 @@ void ProfilePage::fillPassengerTable(const QList<Common::PassengerInfo>& list)
 
     for (int i = 0; i < list.size(); ++i) {
         const auto &p = list[i];
+        QString name;
+        QString idCard;
+        if(ui->cbShowPassengers->isChecked()){
+            name = p.name;
+            idCard = p.idCard;
+        }
+        else{
+            name = maskMiddle(p.name, 0, 1);
+            idCard = maskMiddle(p.idCard, 4, 4);
+        }
         t->setItem(i, 0, new QTableWidgetItem(QString::number(p.id)));
-        t->setItem(i, 1, new QTableWidgetItem(p.name));
-        t->setItem(i, 2, new QTableWidgetItem(p.idCard));
+        t->setItem(i, 1, new QTableWidgetItem(name));
+        t->setItem(i, 2, new QTableWidgetItem(idCard));
     }
 
     if (list.isEmpty()) {
@@ -662,3 +677,5 @@ void ProfilePage::on_btnDelPassenger_clicked()
     req.insert(Protocol::KEY_DATA, data);
     nm->sendJson(req);
 }
+
+
