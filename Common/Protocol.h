@@ -86,8 +86,8 @@ static const QString TYPE_ORDER_LIST_MY   = "order_list_my";            //查询
 static const QString TYPE_ORDER_LIST_MY_RESP = "order_list_my_response";
 
 //改签
-static const QString TYPE_ORDER_RESCHEDUEL      = "order_reschedule";
-static const QString TYPE_ORDER_RESCHEDUEL_RESP = "order_reschedule_response";
+static const QString TYPE_ORDER_RESCHEDULE      = "order_reschedule";
+static const QString TYPE_ORDER_RESCHEDULE_RESP = "order_reschedule_response";
 
 // 取消订单 / 退票
 static const QString TYPE_ORDER_CANCEL      = "order_cancel";

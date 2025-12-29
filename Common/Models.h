@@ -39,10 +39,10 @@ enum class FlightStatus : qint32 {
 };
 
 enum class OrderStatus : qint32 {
-    Booked      = 0,   // 已预订
+    Booked      = 0,   // 已预订/待支付
     Paid        = 1,   // 已支付
-    Rescheduled = 2,   // 已改签
-    Canceled    = 3,   // 已取消/退票
+    Rescheduled = 2,   // 已改签 /可能会有待支付或待退款
+    Canceled    = 3,   // 已取消/已退票
     Finished    = 4    // 已完成
 };
 
@@ -129,6 +129,7 @@ struct OrderInfo {
 
     QString seatNum;               // 座位号
     qint32 priceCents = 0;         // 成交价格（分）
+    qint32 pendingPayment  = 0;    // 待支付价格（分）
     OrderStatus status = OrderStatus::Booked; // 订单状态
     QDateTime createdTime;         // 下单时间
 };
@@ -278,6 +279,7 @@ inline QJsonObject orderToJson(const OrderInfo &ord)
 
     putIfNotEmpty(o, "seatNum", ord.seatNum);
     o.insert("priceCents", ord.priceCents);
+    o.insert("pendingPayment", ord.pendingPayment);
     o.insert("status", static_cast<qint32>(ord.status));
     o.insert("createdTime", toIsoString(ord.createdTime));
     return o;
@@ -295,6 +297,7 @@ inline OrderInfo orderFromJson(const QJsonObject &o)
 
     ord.seatNum = o.value("seatNum").toString();
     ord.priceCents = o.value("priceCents").toInt();
+    ord.pendingPayment = o.value("pendingPayment").toInt();
     ord.status = static_cast<OrderStatus>(o.value("status").toInt());
     ord.createdTime = fromIsoString(o.value("createdTime").toString());
     return ord;
