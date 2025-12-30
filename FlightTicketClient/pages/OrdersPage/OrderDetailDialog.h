@@ -30,6 +30,7 @@ private slots:
     void onJsonReceived(const QJsonObject &obj);
 
     void on_btnCancel_clicked();
+    void on_btnReschedule_clicked();
 
 private:
     Ui::OrderDetailDialog *ui;
@@ -48,6 +49,8 @@ private:
 
     bool m_waitingCancelResp = false;
     void refreshCancelButton();
+
+    void refreshPriceLabel();
 };
 
 #endif // ORDERDETAILDIALOG_H

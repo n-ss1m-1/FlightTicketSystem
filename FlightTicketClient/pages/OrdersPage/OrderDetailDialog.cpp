@@ -5,6 +5,12 @@
 #include "Common/Protocol.h"
 #include <QJsonObject>
 #include <QMessageBox>
+#include "RescheduleDialog.h"
+
+static QString centsToYuanText(qint32 cents)
+{
+    return QString::number(cents / 100.0, 'f', 2);
+}
 
 OrderDetailDialog::OrderDetailDialog(QWidget *parent)
     : QDialog(parent)
@@ -43,25 +49,39 @@ QString OrderDetailDialog::dtToText(const QDateTime &dt)
     return dt.toString("yyyy-MM-dd HH:mm");
 }
 
+void OrderDetailDialog::refreshPriceLabel(){
+    const qint32 paid = m_ord.priceCents - m_ord.pendingPayment;
+    ui->lblPrice->setText(
+        QString("总价：￥%1\n已付：￥%2\n待付：￥%3")
+            .arg(centsToYuanText(m_ord.priceCents))
+            .arg(centsToYuanText(paid))
+            .arg(centsToYuanText(m_ord.pendingPayment))
+        );
+}
+
 void OrderDetailDialog::refreshPayButton()
 {
-    // 已支付：禁用并显示“已支付”
-    if (m_ord.status == Common::OrderStatus::Paid) {
+    // 未登录/已取消/已完成：不可支付
+    if (!NetworkManager::instance()->isLoggedIn() ||
+        m_ord.status == Common::OrderStatus::Canceled ||
+        m_ord.status == Common::OrderStatus::Finished) {
+        ui->btnPay->setEnabled(false);
+        ui->btnPay->setText("不可支付");
+        return;
+    }
+
+    // 没有待支付金额：视为已支付完成
+    if (m_ord.pendingPayment <= 0) {
         ui->btnPay->setEnabled(false);
         ui->btnPay->setText("已支付");
         return;
     }
 
-    // 未支付：允许支付（仅 Booked 状态）
-    if (m_ord.status == Common::OrderStatus::Booked) {
-        ui->btnPay->setEnabled(!m_waitingPayResp);
-        ui->btnPay->setText(m_waitingPayResp ? "支付中..." : "支付");
-        return;
-    }
-
-    // 其它状态：不可支付
-    ui->btnPay->setEnabled(false);
-    ui->btnPay->setText("不可支付");
+    // 有待支付金额：允许支付
+    ui->btnPay->setEnabled(!m_waitingPayResp && !m_waitingCancelResp);
+    ui->btnPay->setText(m_waitingPayResp
+        ? "支付中..."
+        : QString("支付 ¥%1").arg(centsToYuanText(m_ord.pendingPayment)));
 }
 
 void OrderDetailDialog::setData(const Common::OrderInfo &ord,
@@ -78,7 +98,8 @@ void OrderDetailDialog::setData(const Common::OrderInfo &ord,
     ui->lblSource->setText(sourceText);
     ui->lblCreatedTime->setText(dtToText(ord.createdTime));
     ui->lblStatus->setText(statusToText(ord.status));
-    ui->lblPrice->setText(QString("￥%1").arg(QString::number(ord.priceCents / 100.0, 'f', 2)));
+    // ui->lblPrice->setText(QString("￥%1").arg(QString::number(ord.priceCents / 100.0, 'f', 2)));
+    refreshPriceLabel();
 
     // 乘机人信息
     ui->lblPassengerName->setText(ord.passengerName.isEmpty() ? "--" : ord.passengerName);
@@ -102,18 +123,21 @@ void OrderDetailDialog::setData(const Common::OrderInfo &ord,
 
 void OrderDetailDialog::on_btnPay_clicked()
 {
-    // 二次保护
-    if (m_ord.status == Common::OrderStatus::Paid) {
+    if (NetworkManager::instance()->m_username.isEmpty()) {
+        QMessageBox::warning(this, "提示", "未登录，无法支付。");
         refreshPayButton();
         return;
     }
-    if (m_ord.status != Common::OrderStatus::Booked) {
+
+    if (m_ord.status == Common::OrderStatus::Canceled ||
+        m_ord.status == Common::OrderStatus::Finished) {
         QMessageBox::warning(this, "提示", "该订单当前状态不可支付。");
         refreshPayButton();
         return;
     }
-    if (NetworkManager::instance()->m_username.isEmpty()) {
-        QMessageBox::warning(this, "提示", "未登录，无法支付。");
+
+    if (m_ord.pendingPayment <= 0) {
+        QMessageBox::information(this, "提示", "该订单没有待支付金额。");
         refreshPayButton();
         return;
     }
@@ -185,7 +209,10 @@ void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
 
         // 本地更新：状态变 Paid，并刷新显示与按钮
         m_ord.status = Common::OrderStatus::Paid;
+        m_ord.pendingPayment = 0;
         ui->lblStatus->setText(statusToText(m_ord.status));
+
+        refreshPriceLabel();
         refreshPayButton();
 
         QMessageBox::information(this, "成功", obj.value(Protocol::KEY_MESSAGE).toString());
@@ -265,3 +292,57 @@ void OrderDetailDialog::on_btnCancel_clicked()
     NetworkManager::instance()->sendJson(root);
 }
 
+void OrderDetailDialog::on_btnReschedule_clicked()
+{
+    if (NetworkManager::instance()->m_username.isEmpty()) {
+        QMessageBox::warning(this, "提示", "未登录，无法改签。");
+        return;
+    }
+
+    // 只有本用户允许改签
+    if (m_sourceText != "本用户") {
+        QMessageBox::warning(this, "提示", "仅本用户的订单允许改签。");
+        return;
+    }
+
+    if (m_ord.status == Common::OrderStatus::Canceled ||
+        m_ord.status == Common::OrderStatus::Finished ||
+        m_ord.status == Common::OrderStatus::Rescheduled) {
+        QMessageBox::warning(this, "提示", "该订单状态不可改签。");
+        return;
+    }
+
+    RescheduleDialog dlg(this);
+    dlg.setData(m_ord, m_flt);
+
+    connect(&dlg, &RescheduleDialog::rescheduled, this,
+            [&](const Common::OrderInfo &newOrder,
+                const Common::FlightInfo &newFlight,
+                qint32)
+            {
+                // 改签成功后：把详情页切到新订单
+                m_ord = newOrder;
+                m_flt = newFlight;
+
+                ui->lblOrderId->setText(QString::number(m_ord.id));
+                ui->lblStatus->setText(statusToText(m_ord.status));
+
+                refreshPriceLabel();
+
+                // 航班展示更新
+                ui->lblFlightNo->setText(m_flt.flightNo.isEmpty() ? "--" : m_flt.flightNo);
+                ui->lblRoute->setText(QString("%1 → %2")
+                                          .arg(m_flt.fromCity.isEmpty() ? "--" : m_flt.fromCity)
+                                          .arg(m_flt.toCity.isEmpty() ? "--" : m_flt.toCity));
+                ui->lblDepartTime->setText(dtToText(m_flt.departTime));
+                ui->lblArriveTime->setText(dtToText(m_flt.arriveTime));
+
+                // 刷新按钮：如果补差价 pendingPayment>0，支付按钮应可用
+                m_waitingPayResp = false;
+                m_waitingCancelResp = false;
+                refreshPayButton();
+                refreshCancelButton();
+            });
+
+    dlg.exec();
+}
