@@ -25,6 +25,7 @@ public:
 private slots:
     void on_btnOk_clicked();
     void on_btnCancel_clicked();
+    void on_btnAddPassenger_clicked();
 
 private:
     Ui::PassengerPickDialog *ui;
@@ -39,6 +40,14 @@ private:
 
     Common::FlightInfo m_flight; // 航班信息缓存
     void updateFlightInfoUi();
+
+    void requestPassengers(); // 拉取常用乘机人并刷新表格
+    void reloadAll(const QList<Common::PassengerInfo>& others);
+
+    Common::PassengerInfo m_self; // 保存本用户（保证永远是第一行）
+
+    QMetaObject::Connection m_getConn;
+    QMetaObject::Connection m_addConn;
 };
 
 #endif // PASSENGERPICKDIALOG_H
