@@ -2,10 +2,14 @@
 #include "ui_ServerWindow.h"
 #include "DBManager.h"
 #include "OnlineUserManager.h"
+#include "FlightServer.h"
 #include "Common/Models.h"
 #include "AddFlightDialog.h"
 #include "AddOrderDialog.h"
 #include "AddUserDialog.h"
+#include <QMainWindow>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QDateTime>
 #include <QMessageBox>
 #include <QSqlQuery>
@@ -45,6 +49,9 @@ ServerWindow::ServerWindow(QWidget *parent)
     ui->setupUi(this);
     g_window = this;
 
+    // 隐藏主窗口，直到密码验证通过
+    this->hide();
+
     // 安装日志处理器
     qInstallMessageHandler(myMessageOutput);
     connect(this, &ServerWindow::logSignal, this, &ServerWindow::onLogReceived);
@@ -74,52 +81,84 @@ ServerWindow::ServerWindow(QWidget *parent)
 
     connect(m_server, &FlightServer::clientConnected, this, [this](const QString& clientInfo) {
         qInfo() << "客户端连接:" << clientInfo;
-        refreshOnlineUsers();  // 刷新在线用户列表
+        refreshOnlineUsers();
     });
 
     connect(m_server, &FlightServer::clientDisconnected, this, [this](const QString& clientInfo) {
         qInfo() << "客户端断开:" << clientInfo;
-        refreshOnlineUsers();  // 刷新在线用户列表
+        refreshOnlineUsers();
     });
 
     // 初始化UI
     initTables();
     updateUIState();
 
-    // 设置数据库连接 - 使用您提供的DBManager.connect方法
-    QString host = "localhost";      // 修改为您的MySQL服务器地址
-    int port = 3306;                 // MySQL默认端口
-    QString user = "root";           // 修改为您的MySQL用户名
-    QString passwd = "passwd";     // 修改为您的MySQL密码
-    QString dbName = "flight_ticket";       // 修改为您的数据库名
-    QString errMsg;
+    // 先弹出数据库密码输入对话框
+    bool dbConnected = false;
+    int maxAttempts = 3;  // 最多尝试次数
+    int attempts = 0;
 
-    qInfo() << "正在连接数据库...";
+    while (attempts < maxAttempts && !dbConnected) {
+        attempts++;
 
-    // 注意：这里使用 instance() 而不是 getInstance()
-    bool connected = DBManager::instance().connect(host, port, user, passwd, dbName, &errMsg);
+        // 弹出密码输入对话框
+        bool ok = false;
+        QString passwd = QInputDialog::getText(this, "数据库连接",
+                                               QString("请输入数据库密码 (尝试 %1/%2):").arg(attempts).arg(maxAttempts),
+                                               QLineEdit::Password, "", &ok);
 
-    if (connected) {
-        qInfo() << "数据库连接成功";
-
-        // 测试数据库是否正常工作
-        if (DBManager::instance().isConnected()) {
-            qInfo() << "数据库连接状态正常";
-
-            // 初始化刷新
-            on_btnRefresh_clicked();
-        } else {
-            QMessageBox::warning(this, "数据库警告", "数据库连接状态异常");
+        if (!ok) {
+            // 用户点击了取消
+            QMessageBox::information(this, "提示", "需要数据库密码才能启动服务器管理程序。");
+            exit(0);  // 退出程序
         }
-    } else {
-        QMessageBox::critical(this, "数据库连接失败",
-                              "无法连接到数据库:\n" + errMsg +
-                                  "\n\n请检查:\n"
-                                  "1. MySQL服务器是否启动\n"
-                                  "2. 数据库连接参数是否正确\n"
-                                  "3. 防火墙设置\n"
-                                  "4. ODBC驱动是否正确安装");
-        qCritical() << "数据库连接失败:" << errMsg;
+
+        if (passwd.isEmpty()) {
+            QMessageBox::warning(this, "警告", "密码不能为空！");
+            continue;
+        }
+
+        // 尝试连接数据库
+        QString host = "localhost";
+        int port = 3306;
+        QString user = "root";
+        QString dbName = "flight_ticket";
+        QString errMsg;
+
+        qInfo() << QString("正在连接数据库 (尝试 %1/%2)...").arg(attempts).arg(maxAttempts);
+
+        dbConnected = DBManager::instance().connect(host, port, user, passwd, dbName, &errMsg);
+
+        if (dbConnected) {
+            qInfo() << "数据库连接成功";
+
+            // 测试数据库是否正常工作
+            if (DBManager::instance().isConnected()) {
+                qInfo() << "数据库连接状态正常";
+
+                // 显示主窗口
+                this->show();
+
+                // 初始化刷新
+                on_btnRefresh_clicked();
+
+                QMessageBox::information(this, "成功", "数据库连接成功！");
+            } else {
+                dbConnected = false;
+                QMessageBox::warning(this, "数据库警告", "数据库连接状态异常，请重新输入密码。");
+            }
+        } else {
+            QString errorMsg = QString("数据库连接失败: %1\n\n").arg(errMsg);
+
+            if (attempts < maxAttempts) {
+                errorMsg += QString("您还有 %1 次尝试机会。").arg(maxAttempts - attempts);
+                QMessageBox::warning(this, "连接失败", errorMsg);
+            } else {
+                errorMsg += "已超过最大尝试次数，程序将退出。";
+                QMessageBox::critical(this, "连接失败", errorMsg);
+                exit(1);  // 退出程序
+            }
+        }
     }
 }
 
