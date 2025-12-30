@@ -2,15 +2,19 @@
 #include "ui_ServerWindow.h"
 #include "DBManager.h"
 #include "OnlineUserManager.h"
+#include "AddFlightDialog.h"
+#include "AddOrderDialog.h"
+#include "AddUserDialog.h"
 #include <QDateTime>
 #include <QMessageBox>
 #include <QSqlQuery>
 #include <QSqlError>
-#include "AddFlightDialog.h"
-#include "AddOrderDialog.h"
-#include "AddUserDialog.h"
-#include <QTcpServer>
-#include <QTcpSocket> // 必须包含
+#include <QTimer>
+#include <QEventLoop>
+#include <QTcpSocket>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QNetworkInterface>
 
 // 全局指针，方便把日志传给窗口
 static ServerWindow* g_window = nullptr;
@@ -38,118 +42,290 @@ ServerWindow::ServerWindow(QWidget *parent)
     , m_server(new FlightServer(this))
 {
     ui->setupUi(this);
-    ui->tabWidget->setCurrentIndex(0);
     g_window = this;
 
-    // 安装日志拦截器
+    // 安装日志处理器
     qInstallMessageHandler(myMessageOutput);
     connect(this, &ServerWindow::logSignal, this, &ServerWindow::onLogReceived);
 
-    // 关键：连接 Server 的新连接信号，维护 m_clientList
-    // 使用强转确保能访问 QTcpServer 的信号
-    QTcpServer *tcpServer = (QTcpServer*)m_server;
-
-    connect(tcpServer, &QTcpServer::newConnection, this, [=](){
-        while(tcpServer->hasPendingConnections()) {
-            QTcpSocket *sock = tcpServer->nextPendingConnection();
-            m_clientList.append(sock);
-
-            // 客户端断开时从列表移除
-            connect(sock, &QTcpSocket::disconnected, this, [=](){
-                m_clientList.removeOne(sock);
-                sock->deleteLater();
-            });
-        }
+    // 连接服务器信号
+    connect(m_server, &FlightServer::serverStarted, this, [this]() {
+        m_isServerRunning = true;
+        updateUIState();
+        qInfo() << "服务器启动成功";
     });
 
+    connect(m_server, &FlightServer::serverStopped, this, [this]() {
+        m_isServerRunning = false;
+        updateUIState();
+        qInfo() << "服务器已停止";
+    });
+
+    connect(m_server, &FlightServer::serverPaused, this, [this]() {
+        updateUIState();
+        qInfo() << "服务器已暂停";
+    });
+
+    connect(m_server, &FlightServer::serverResumed, this, [this]() {
+        updateUIState();
+        qInfo() << "服务器已恢复";
+    });
+
+    connect(m_server, &FlightServer::clientConnected, this, [this](const QString& clientInfo) {
+        qInfo() << "客户端连接:" << clientInfo;
+        refreshOnlineUsers();  // 刷新在线用户列表
+    });
+
+    connect(m_server, &FlightServer::clientDisconnected, this, [this](const QString& clientInfo) {
+        qInfo() << "客户端断开:" << clientInfo;
+        refreshOnlineUsers();  // 刷新在线用户列表
+    });
+
+    // 初始化UI
     initTables();
+    updateUIState();
+
+    // 设置数据库连接 - 使用您提供的DBManager.connect方法
+    QString host = "localhost";      // 修改为您的MySQL服务器地址
+    int port = 3306;                 // MySQL默认端口
+    QString user = "root";           // 修改为您的MySQL用户名
+    QString passwd = "passwd";     // 修改为您的MySQL密码
+    QString dbName = "flight_ticket";       // 修改为您的数据库名
+    QString errMsg;
+
+    qInfo() << "正在连接数据库...";
+
+    // 注意：这里使用 instance() 而不是 getInstance()
+    bool connected = DBManager::instance().connect(host, port, user, passwd, dbName, &errMsg);
+
+    if (connected) {
+        qInfo() << "数据库连接成功";
+
+        // 测试数据库是否正常工作
+        if (DBManager::instance().isConnected()) {
+            qInfo() << "数据库连接状态正常";
+
+            // 初始化刷新
+            on_btnRefresh_clicked();
+        } else {
+            QMessageBox::warning(this, "数据库警告", "数据库连接状态异常");
+        }
+    } else {
+        QMessageBox::critical(this, "数据库连接失败",
+                              "无法连接到数据库:\n" + errMsg +
+                                  "\n\n请检查:\n"
+                                  "1. MySQL服务器是否启动\n"
+                                  "2. 数据库连接参数是否正确\n"
+                                  "3. 防火墙设置\n"
+                                  "4. ODBC驱动是否正确安装");
+        qCritical() << "数据库连接失败:" << errMsg;
+    }
 }
 
 ServerWindow::~ServerWindow()
 {
     qInstallMessageHandler(nullptr);
+    if (m_server) {
+        m_server->stop();
+    }
     delete ui;
 }
 
 void ServerWindow::appendLog(const QString &msg) {
-    if (g_window) emit g_window->logSignal(msg);
+    emit logSignal(msg);
 }
 
 void ServerWindow::onLogReceived(const QString &msg) {
     ui->textEditLog->append(msg);
+
+    // 自动滚动到底部
+    QTextCursor cursor = ui->textEditLog->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    ui->textEditLog->setTextCursor(cursor);
 }
 
-// ---------------------------------------------------------
-// 初始化表格 (注意航班表有7列)
-// ---------------------------------------------------------
 void ServerWindow::initTables() {
-    // 1. 在线用户表
+    // 初始化在线用户表
     if(ui->tableOnline) {
         QStringList header; header << "用户名" << "姓名" << "电话" << "状态";
         ui->tableOnline->setColumnCount(header.size());
         ui->tableOnline->setHorizontalHeaderLabels(header);
     }
-    // 2. 航班表 (7列：ID, 航班号, 出发, 到达, 时间, 余票, price)
+
+    // 初始化航班表
     if(ui->tableFlights) {
         QStringList header;
         header << "ID" << "航班号" << "出发" << "到达" << "时间" << "余票" << "价格";
         ui->tableFlights->setColumnCount(header.size());
         ui->tableFlights->setHorizontalHeaderLabels(header);
     }
-}
 
-// ---------------------------------------------------------
-// 启动逻辑
-// ---------------------------------------------------------
-void ServerWindow::on_btnStart_clicked() {
-    QTcpServer *serverBase = (QTcpServer*)m_server;
+    // 初始化用户表
+    if(ui->tableAllUsers) {
+        QStringList header;
+        header << "ID" << "用户名" << "真实姓名" << "电话" << "身份证";
+        ui->tableAllUsers->setColumnCount(header.size());
+        ui->tableAllUsers->setHorizontalHeaderLabels(header);
+    }
 
-    if (serverBase->listen(QHostAddress::Any, 12345)) {
-        ui->btnStart->setEnabled(false); // 启动变灰
-        ui->btnPause->setEnabled(true);  // 暂停变亮
-
-        // 更新状态标签 (确保UI里有这个Label)
-        ui->labelStatus->setText("状态：运行中");
-
-        QMessageBox::information(this, "成功", "服务器已启动 (端口12345)");
-        on_btnRefresh_clicked();
-    } else {
-        QMessageBox::critical(this, "失败", "服务器启动失败，端口可能被占用");
+    // 初始化订单表
+    if(ui->tableOrders) {
+        QStringList header;
+        header << "订单ID" << "下单用户" << "航班号" << "乘客姓名" << "价格" << "状态";
+        ui->tableOrders->setColumnCount(header.size());
+        ui->tableOrders->setHorizontalHeaderLabels(header);
     }
 }
 
-// ---------------------------------------------------------
-// 暂停/停止逻辑 (合并了以前的停止功能)
-// ---------------------------------------------------------
-void ServerWindow::on_btnPause_clicked()
+void ServerWindow::updateUIState()
 {
-    QTcpServer *serverBase = (QTcpServer*)m_server;
+    QString statusText;
+    QString buttonText = "启动服务器";
+    QString pauseButtonText = "暂停";
+    bool startButtonEnabled = true;
+    bool pauseButtonEnabled = false;
+    QString style;
 
-    // 1. 停止监听新连接
-    if (serverBase->isListening()) {
-        serverBase->close();
-        ui->textEditLog->append("[Info] 服务已停止监听。");
+    if (m_server->isRunning()) {
+        if (m_server->isPaused()) {
+            statusText = "已暂停 (端口: 12345)";
+            buttonText = "重启服务器";
+            pauseButtonText = "恢复";
+            pauseButtonEnabled = true;
+            startButtonEnabled = true;
+            style = "color: orange; font-weight: bold;";
+        } else {
+            statusText = "运行中 (端口: 12345)";
+            buttonText = "重启服务器";
+            pauseButtonText = "暂停";
+            pauseButtonEnabled = true;
+            startButtonEnabled = true;
+            style = "color: green; font-weight: bold;";
+        }
+    } else {
+        statusText = "已停止";
+        buttonText = "启动服务器";
+        pauseButtonText = "暂停";
+        pauseButtonEnabled = false;
+        startButtonEnabled = true;
+        style = "color: red; font-weight: bold;";
     }
 
-    // 2. 通知并断开所有客户端
-    for (QTcpSocket *socket : m_clientList) {
-        if (socket->state() == QAbstractSocket::ConnectedState) {
-            socket->write("CMD:SERVER_PAUSED");
-            socket->waitForBytesWritten(1000);
-            socket->disconnectFromHost();
+    // 更新UI元素
+    ui->labelStatus->setText("服务器状态: " + statusText);
+    ui->labelStatus->setStyleSheet(style);
+    ui->btnStart->setText(buttonText);
+    ui->btnStart->setEnabled(startButtonEnabled);
+    ui->btnPause->setText(pauseButtonText);
+    ui->btnPause->setEnabled(pauseButtonEnabled);
+}
+
+// 启动服务器
+void ServerWindow::startServer()
+{
+    qInfo() << "正在启动服务器...";
+
+    if (m_server->start(12345)) {
+        m_isServerRunning = true;
+        updateUIState();
+        QMessageBox::information(this, "成功", "服务器已启动 (端口: 12345)");
+    } else {
+        QMessageBox::critical(this, "启动失败",
+                              "服务器启动失败:\n"
+                              "1. 端口可能被占用\n"
+                              "2. 请检查防火墙设置\n"
+                              "3. 尝试使用管理员权限运行");
+    }
+}
+
+// 停止服务器
+void ServerWindow::stopServer(bool notifyClients)
+{
+    if (m_server->isRunning()) {
+        m_server->stop();
+        m_isServerRunning = false;
+    }
+}
+
+// 重启服务器
+void ServerWindow::restartServer()
+{
+    qInfo() << "正在重启服务器...";
+
+    // 保存当前状态
+    bool wasPaused = m_server->isPaused();
+
+    // 先暂停服务器（通知客户端）
+    if (!wasPaused && m_server->isRunning()) {
+        m_server->pause();
+
+        // 短暂延迟
+        QEventLoop loop;
+        QTimer::singleShot(1000, &loop, &QEventLoop::quit);
+        loop.exec();
+    }
+
+    // 停止服务器
+    m_server->stop();
+
+    // 短暂延迟，确保端口释放
+    QEventLoop loop;
+    QTimer::singleShot(100, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    // 重新启动服务器
+    if (m_server->start(12345)) {
+        updateUIState();
+        qInfo() << "服务器重启成功";
+        QMessageBox::information(this, "成功", "服务器重启成功");
+    } else {
+        qCritical() << "服务器重启失败";
+        QMessageBox::critical(this, "重启失败", "服务器重启失败，请检查端口是否被占用");
+    }
+}
+
+void ServerWindow::on_btnStart_clicked()
+{
+    if (!m_server->isRunning()) {
+        // 服务器未运行，启动服务器
+        startServer();
+    } else {
+        // 服务器正在运行，执行重启
+        int result = QMessageBox::question(this, "重启确认",
+                                           "服务器正在运行，是否要重启？\n"
+                                           "重启将断开所有客户端连接。\n\n"
+                                           "选择：\n"
+                                           "是 - 重启服务器\n"
+                                           "否 - 返回");
+
+        if (result == QMessageBox::Yes) {
+            restartServer();
         }
     }
-
-    // 3. 界面重置为“可启动”状态
-    ui->btnStart->setEnabled(true);  // 允许再次点击启动
-    ui->btnPause->setEnabled(false); // 禁用暂停
-    ui->labelStatus->setText("状态：已暂停");
 }
 
-// 注意：on_btnStop_clicked 已经被彻底删除
-
-void ServerWindow::on_btnRefresh_clicked()
+void ServerWindow::on_btnPause_clicked()
 {
+    if (m_server->isRunning() && !m_server->isPaused()) {
+        int result = QMessageBox::question(this, "暂停确认",
+                                           "确定要暂停服务器吗？\n"
+                                           "暂停将断开所有客户端连接并停止接受新连接。\n"
+                                           "暂停后可以使用启动按钮重新启动。");
+
+        if (result == QMessageBox::Yes) {
+            m_server->pause();
+            updateUIState();
+        }
+    } else if (m_server->isRunning() && m_server->isPaused()) {
+        // 如果已暂停，则恢复
+        m_server->resume();
+        updateUIState();
+        QMessageBox::information(this, "成功", "服务器已恢复运行");
+    }
+}
+
+// 刷新按钮
+void ServerWindow::on_btnRefresh_clicked() {
     refreshOnlineUsers();
     refreshFlights();
     refreshAllUsers();
@@ -171,9 +347,6 @@ void ServerWindow::refreshOnlineUsers() {
     }
 }
 
-// ---------------------------------------------------------
-// 刷新航班 (修复余票覆盖问题)
-// ---------------------------------------------------------
 void ServerWindow::refreshFlights() {
     if(!ui->tableFlights) return;
 
@@ -209,11 +382,6 @@ void ServerWindow::refreshAllUsers()
 
     QString sql = "SELECT * FROM user";
     QSqlQuery query = DBManager::instance().Query(sql);
-
-    QStringList header;
-    header << "ID" << "用户名" << "真实姓名" << "电话" << "身份证";
-    ui->tableAllUsers->setColumnCount(header.size());
-    ui->tableAllUsers->setHorizontalHeaderLabels(header);
 
     ui->tableAllUsers->setRowCount(0);
     while (query.next()) {
@@ -267,9 +435,6 @@ void ServerWindow::on_btnShowAddDialog_clicked()
     }
 }
 
-// ---------------------------------------------------------
-// 刷新订单 (修复列越界)
-// ---------------------------------------------------------
 void ServerWindow::refreshOrders()
 {
     if(!ui->tableOrders) return;
@@ -281,12 +446,6 @@ void ServerWindow::refreshOrders()
                   "ORDER BY o.id DESC";
 
     QSqlQuery query = DBManager::instance().Query(sql);
-
-    // 表头
-    QStringList header;
-    header << "订单ID" << "下单用户" << "航班号" << "乘客姓名" << "价格" << "状态";
-    ui->tableOrders->setColumnCount(header.size());
-    ui->tableOrders->setHorizontalHeaderLabels(header);
 
     ui->tableOrders->setRowCount(0);
     while (query.next()) {
