@@ -706,6 +706,17 @@ DBResult DBManager::rescheduleOrder(Common::OrderInfo& oriOrder,Common::OrderInf
         return res;
     }
 
+    //更新原订单状态为Rescheduled
+    oriOrder.status = Common::OrderStatus::Rescheduled;
+    QString updateStatusSql1 = "update orders set status=? where id=?";
+    QList<QVariant> statusParams1;
+    statusParams1 << static_cast<int>(oriOrder.status) << oriOrder.id;
+    int statusAffected1 = update(updateStatusSql1, statusParams1, errMsg);
+    if(statusAffected1 <= 0)
+    {
+        if(errMsg) *errMsg=*errMsg+" 新订单状态更新失败";
+    }
+
     //差价=新订单价格(创建订单后才有实际价格)-已支付价格
     priceDif=newOrder.priceCents-oriPaidAmount;
     //新订单待支付金额=max(0,差价)  避免被createOrder内部初始化覆盖
@@ -721,13 +732,13 @@ DBResult DBManager::rescheduleOrder(Common::OrderInfo& oriOrder,Common::OrderInf
         if(errMsg) *errMsg=*errMsg+" 新订单待支付金额更新失败";
     }
 
-    //更新新订单状态为Rescheduled
-    newOrder.status = Common::OrderStatus::Rescheduled;
-    QString updateStatusSql = "update orders set status=? where id=?";
-    QList<QVariant> statusParams;
-    statusParams << static_cast<int>(newOrder.status) << newOrder.id;
-    int statusAffected = update(updateStatusSql, statusParams, errMsg);
-    if(statusAffected <= 0)
+    //根据pendingPayment->更新新订单状态(大于0->Booked 等于0->Paid)
+    newOrder.status = newOrder.pendingPayment>0?Common::OrderStatus::Booked:Common::OrderStatus::Rescheduled;
+    QString updateStatusSql2 = "update orders set status=? where id=?";
+    QList<QVariant> statusParams2;
+    statusParams2 << static_cast<int>(newOrder.status) << newOrder.id;
+    int statusAffected2 = update(updateStatusSql2, statusParams2, errMsg);
+    if(statusAffected2 <= 0)
     {
         if(errMsg) *errMsg=*errMsg+" 新订单状态更新失败";
     }
