@@ -456,7 +456,12 @@ void ProfilePage::requestPassengers()
                     return;
                 }
 
-                QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+                QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+                if (!msg.contains("暂无")) {
+                    QMessageBox::critical(this, "错误", msg);
+                }
+
                 QObject::disconnect(m_passengerConn);
                 m_passengerConn = {};
                 return;
