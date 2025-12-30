@@ -95,16 +95,15 @@ ServerWindow::ServerWindow(QWidget *parent)
 
     // 先弹出数据库密码输入对话框
     bool dbConnected = false;
-    int maxAttempts = 3;  // 最多尝试次数
-    int attempts = 0;
+    int attempts = 0;  // 记录尝试次数
 
-    while (attempts < maxAttempts && !dbConnected) {
+    while (!dbConnected) {
         attempts++;
 
         // 弹出密码输入对话框
         bool ok = false;
         QString passwd = QInputDialog::getText(this, "数据库连接",
-                                               QString("请输入数据库密码 (尝试 %1/%2):").arg(attempts).arg(maxAttempts),
+                                               QString("请输入数据库密码 (第%1次尝试):").arg(attempts),
                                                QLineEdit::Password, "", &ok);
 
         if (!ok) {
@@ -125,7 +124,7 @@ ServerWindow::ServerWindow(QWidget *parent)
         QString dbName = "flight_ticket";
         QString errMsg;
 
-        qInfo() << QString("正在连接数据库 (尝试 %1/%2)...").arg(attempts).arg(maxAttempts);
+        qInfo() << QString("正在连接数据库 (第%1次尝试)...").arg(attempts);
 
         dbConnected = DBManager::instance().connect(host, port, user, passwd, dbName, &errMsg);
 
@@ -149,15 +148,8 @@ ServerWindow::ServerWindow(QWidget *parent)
             }
         } else {
             QString errorMsg = QString("数据库连接失败: %1\n\n").arg(errMsg);
-
-            if (attempts < maxAttempts) {
-                errorMsg += QString("您还有 %1 次尝试机会。").arg(maxAttempts - attempts);
-                QMessageBox::warning(this, "连接失败", errorMsg);
-            } else {
-                errorMsg += "已超过最大尝试次数，程序将退出。";
-                QMessageBox::critical(this, "连接失败", errorMsg);
-                exit(1);  // 退出程序
-            }
+            errorMsg += "请重新输入密码。";
+            QMessageBox::warning(this, "连接失败", errorMsg);
         }
     }
 }
