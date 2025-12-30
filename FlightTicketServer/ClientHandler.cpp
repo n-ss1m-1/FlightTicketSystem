@@ -138,12 +138,16 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         Common::UserInfo existUser;
         if (db.getUserByUsername(username, existUser) == DBResult::Success)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在"));
+            QJsonObject respData;
+            respData.insert("user",Common::userToJson(existUser));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在",respData));
             return;
         }
         if (db.getUserByPhone(phone, existUser, &errMsg) == DBResult::Success)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该手机号已被注册，请更换手机号或直接登录"));
+            QJsonObject respData;
+            respData.insert("user",Common::userToJson(existUser));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该手机号已被注册，请更换手机号或直接登录",respData));
             return;
         }
         if (!errMsg.isEmpty())
@@ -155,7 +159,9 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         if (db.getUserByIdCard(idCard, existUser, &errMsg) == DBResult::Success)
         {
-            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该身份证号已关联其他账号，请确认信息后重试"));
+            QJsonObject respData;
+            respData.insert("user",Common::userToJson(existUser));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该身份证号已关联其他账号，请确认信息后重试",respData));
             return;
         }
         if (!errMsg.isEmpty())
@@ -502,6 +508,21 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
 
         qInfo() << "create order request: from username:" << username << "(flightId:" << order.flightId << "passengerName:" << order.passengerName << "passengerIdCard:" <<order.passengerIdCard<<")";
+
+        Common::OrderInfo existOrder;
+        if (db.getOrderByFlightId(order.flightId,order.passengerName,order.passengerIdCard,existOrder, &errMsg) == DBResult::Success)
+        {
+            QJsonObject respData;
+            respData.insert("order",Common::orderToJson(existOrder));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "订单创建失败: 该乘客已经预定该航班",respData));
+            return;
+        }
+        if (!errMsg.isEmpty())
+        {
+            qCritical() << "Check idCard exist DB Error:" << errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "订单创建失败: 查询订单异常"));
+            return;
+        }
 
         DBResult res=db.createOrder(order,&errMsg);
         if(res == DBResult::Success)
