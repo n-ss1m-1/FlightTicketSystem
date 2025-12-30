@@ -28,6 +28,10 @@ private slots:
     // 用于监听网络数据的槽函数
     void onJsonReceived(const QJsonObject &obj);
 
+    void on_cbUseDateRange_clicked();
+
+    void on_cbUseTimeRange_clicked();
+
 private:
     Ui::FlightsPage *ui;
     QStandardItemModel *model;   // 数据显示模型
@@ -38,7 +42,12 @@ private:
     void sendCreateOrder(qint64 flightId, const QString& name, const QString& idCard);
 
     void requestCityList();
-    void sendFlightSearch(const QString& from, const QString& to, const QDate& date);
+    void sendFlightSearch(const QString& from,
+                          const QString& to,
+                          const QDate& minDate,
+                          const QDate& maxDate,
+                          const QTime& minTime,
+                          const QTime& maxTime);
 
     bool m_cityListLoaded = false;
 
@@ -46,9 +55,14 @@ private:
     bool m_waitingCityListForSearch = false;
     QString m_pendingFromCity;
     QString m_pendingToCity;
-    QDate m_pendingDate;
+    QDate m_pendingMinDate;
+    QDate m_pendingMaxDate;
+    QTime m_pendingMinTime;
+    QTime m_pendingMaxTime;
 
     QHash<qint64, Common::FlightInfo> m_flightCache; // flightId -> FlightInfo
+
+    bool m_waitingFlightSearch = false;
 
 protected:
     void showEvent(QShowEvent *event) override;

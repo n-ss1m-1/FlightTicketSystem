@@ -26,7 +26,8 @@ FlightsPage::FlightsPage(QWidget *parent)
 
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived, this, &FlightsPage::onJsonReceived);
 
-    ui->dateEdit->setDate(QDate::currentDate());
+    ui->deMinDate->setDate(QDate::currentDate());
+    ui->deMaxDate->setDate(QDate::currentDate());
 
     requestCityList();
 }
@@ -52,31 +53,88 @@ void FlightsPage::requestCityList()
     NetworkManager::instance()->sendJson(root);
 }
 
-void FlightsPage::sendFlightSearch(const QString& from, const QString& to, const QDate& date)
+void FlightsPage::sendFlightSearch(const QString& from,
+                                   const QString& to,
+                                   const QDate& minDate,
+                                   const QDate& maxDate,
+                                   const QTime& minTime,
+                                   const QTime& maxTime)
 {
     QJsonObject data;
-    data.insert("fromCity", from);
-    data.insert("toCity", to);
-    data.insert("date", date.toString(Qt::ISODate));
+
+    // 所有条件允许不指定：不指定就不insert
+    if (!from.isEmpty()) data.insert("fromCity", from);
+    if (!to.isEmpty())   data.insert("toCity", to);
+
+    QJsonObject dateObj;
+
+    if (minDate.isValid()) dateObj.insert("minDepartDate", minDate.toString("yyyy-MM-dd"));
+    if (maxDate.isValid()) dateObj.insert("maxDepartDate", maxDate.toString("yyyy-MM-dd"));
+
+    if (minTime.isValid()) dateObj.insert("minDepartTime", minTime.toString("HH:mm"));
+    if (maxTime.isValid()) dateObj.insert("maxDepartTime", maxTime.toString("HH:mm"));
+
+    if (!dateObj.isEmpty())
+        data.insert("date", dateObj);
 
     QJsonObject root;
     root.insert(Protocol::KEY_TYPE, Protocol::TYPE_FLIGHT_SEARCH);
     root.insert(Protocol::KEY_DATA, data);
 
+    m_waitingFlightSearch = true;
+
     NetworkManager::instance()->sendJson(root);
 }
 
+
 void FlightsPage::on_btnSearch_clicked()
 {
-    const QString from = ui->comboDep->currentText().trimmed();
-    const QString to   = ui->comboDest->currentText().trimmed();
-    const QDate date   = ui->dateEdit->date();
+    if (!NetworkManager::instance()->isLoggedIn()) {
+        QMessageBox::warning(this, "提示", "请先登录后再查询航班。");
+        return;
+    }
 
-    // 每次查询航班都先拉城市列表
+    QString from = ui->comboDep->currentText().trimmed();
+    QString to   = ui->comboDest->currentText().trimmed();
+
+    if (from == "不限") from.clear();
+    if (to   == "不限") to.clear();
+
+    if (!from.isEmpty() && !to.isEmpty() && from == to) {
+        QMessageBox::warning(this, "提示", "出发地和目的地不能相同。");
+        return;
+    }
+
+    QDate minDate, maxDate;
+    QTime minTime, maxTime;
+
+    if (ui->cbUseDateRange->isChecked()) {
+        minDate = ui->deMinDate->date();
+        maxDate = ui->deMaxDate->date();
+
+        if (minDate.isValid() && maxDate.isValid() && minDate > maxDate) {
+            QMessageBox::warning(this, "提示", "最早日期不能晚于最晚日期。");
+            return;
+        }
+    }
+
+    if (ui->cbUseTimeRange->isChecked()) {
+        minTime = ui->teMinTime->time();
+        maxTime = ui->teMaxTime->time();
+
+        if (minTime.isValid() && maxTime.isValid() && minTime > maxTime) {
+            QMessageBox::warning(this, "提示", "最早时间不能晚于最晚时间（不支持跨天范围）。");
+            return;
+        }
+    }
+
     m_waitingCityListForSearch = true;
     m_pendingFromCity = from;
     m_pendingToCity = to;
-    m_pendingDate = date;
+    m_pendingMinDate = minDate;
+    m_pendingMaxDate = maxDate;
+    m_pendingMinTime = minTime;
+    m_pendingMaxTime = maxTime;
 
     requestCityList();
 }
@@ -140,8 +198,20 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
                 return;
             }
 
-            // 其它错误：提示
-            QMessageBox::warning(this, "获取乘机人失败", msg);
+            return;
+        }
+
+        // 航班搜索
+        if (m_waitingFlightSearch) {
+            m_waitingFlightSearch = false;
+
+            model->removeRows(0, model->rowCount());
+
+            if (msg.contains("暂无")) {
+                QMessageBox::information(this, "查询结果", "抱歉，未找到符合条件的航班。");
+            } else {
+                QMessageBox::warning(this, "航班查询失败", msg);
+            }
             return;
         }
 
@@ -163,7 +233,10 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
                 // 继续查航班（用当前combo的值，或者pending）
                 const QString from = ui->comboDep->currentText().trimmed().isEmpty() ? m_pendingFromCity : ui->comboDep->currentText().trimmed();
                 const QString to   = ui->comboDest->currentText().trimmed().isEmpty() ? m_pendingToCity : ui->comboDest->currentText().trimmed();
-                sendFlightSearch(from, to, m_pendingDate);
+                sendFlightSearch(m_pendingFromCity,
+                                 m_pendingToCity,
+                                 m_pendingMinDate, m_pendingMaxDate,
+                                 m_pendingMinTime, m_pendingMaxTime);
             }
             return;
         }
@@ -180,9 +253,11 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         ui->comboDest->blockSignals(true);
 
         ui->comboDep->clear();
+        ui->comboDep->addItem("不限");
         for (const auto &c : fromCities) ui->comboDep->addItem(c);
 
         ui->comboDest->clear();
+        ui->comboDest->addItem("不限");
         for (const auto &c : toCities) ui->comboDest->addItem(c);
 
         // 恢复旧选择
@@ -208,17 +283,18 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
             int pTo = ui->comboDest->findText(m_pendingToCity);
             if (pTo >= 0) ui->comboDest->setCurrentIndex(pTo);
 
-            ui->dateEdit->setDate(m_pendingDate);
-
-            sendFlightSearch(ui->comboDep->currentText(),
-                             ui->comboDest->currentText(),
-                             ui->dateEdit->date());
+            sendFlightSearch(m_pendingFromCity,
+                             m_pendingToCity,
+                             m_pendingMinDate, m_pendingMaxDate,
+                             m_pendingMinTime, m_pendingMaxTime);
         }
         return;
     }
 
     // 3. 处理查询结果
     if (type == Protocol::TYPE_FLIGHT_SEARCH_RESP) {
+        m_waitingFlightSearch = false;
+
         QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
         QJsonArray flightsArr = dataObj.value("flights").toArray();
 
@@ -329,5 +405,19 @@ void FlightsPage::sendCreateOrder(qint64 flightId, const QString& name, const QS
     root.insert(Protocol::KEY_DATA, data);
 
     NetworkManager::instance()->sendJson(root);
+}
+
+
+void FlightsPage::on_cbUseDateRange_clicked()
+{
+    ui->deMinDate->setEnabled(ui->cbUseDateRange->isEnabled());
+    ui->deMaxDate->setEnabled(ui->cbUseDateRange->isEnabled());
+}
+
+
+void FlightsPage::on_cbUseTimeRange_clicked()
+{
+    ui->teMinTime->setEnabled(ui->cbUseTimeRange->isEnabled());
+    ui->teMaxTime->setEnabled(ui->cbUseTimeRange->isEnabled());
 }
 

@@ -108,10 +108,10 @@ void RescheduleDialog::sendFlightSearch()
             QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
 
             if(!msg.contains("暂无")){
-                QMessageBox::critical(self, "查询失败", msg);
+                QMessageBox::warning(self, "航班查询失败", msg);
             }
             else{
-                QMessageBox::warning(self, "查询失败", "没有符合条件的航班");
+                QMessageBox::information(self, "查询结果", "抱歉，未找到符合条件的航班。");
             }
             return;
         }
