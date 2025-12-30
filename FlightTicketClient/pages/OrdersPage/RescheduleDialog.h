@@ -43,6 +43,7 @@ private:
     QMetaObject::Connection m_searchConn;
     bool m_waitingSearch = false;
 
+    QList<Common::FlightInfo> m_showFlights; // table展示用（过滤后）
 };
 
 #endif // RESCHEDULEDIALOG_H

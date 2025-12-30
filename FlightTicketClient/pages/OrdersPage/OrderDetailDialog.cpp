@@ -61,10 +61,11 @@ void OrderDetailDialog::refreshPriceLabel(){
 
 void OrderDetailDialog::refreshPayButton()
 {
-    // 未登录/已取消/已完成：不可支付
+    // 未登录/已取消/已完成/已改签：不可支付
     if (!NetworkManager::instance()->isLoggedIn() ||
         m_ord.status == Common::OrderStatus::Canceled ||
-        m_ord.status == Common::OrderStatus::Finished) {
+        m_ord.status == Common::OrderStatus::Finished ||
+        m_ord.status == Common::OrderStatus::Rescheduled) {
         ui->btnPay->setEnabled(false);
         ui->btnPay->setText("不可支付");
         return;
@@ -119,6 +120,7 @@ void OrderDetailDialog::setData(const Common::OrderInfo &ord,
     m_waitingCancelResp = false;
     refreshPayButton();
     refreshCancelButton();
+    refreshRescheduleButton();
 }
 
 void OrderDetailDialog::on_btnPay_clicked()
@@ -130,7 +132,8 @@ void OrderDetailDialog::on_btnPay_clicked()
     }
 
     if (m_ord.status == Common::OrderStatus::Canceled ||
-        m_ord.status == Common::OrderStatus::Finished) {
+        m_ord.status == Common::OrderStatus::Finished ||
+        m_ord.status == Common::OrderStatus::Rescheduled) {
         QMessageBox::warning(this, "提示", "该订单当前状态不可支付。");
         refreshPayButton();
         return;
@@ -173,6 +176,7 @@ void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
             m_waitingCancelResp = false;
             refreshPayButton();
             refreshCancelButton();
+            refreshRescheduleButton();
             QMessageBox::critical(this, "取消失败", obj.value(Protocol::KEY_MESSAGE).toString());
             return;
         }
@@ -185,6 +189,7 @@ void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
             ui->lblStatus->setText(statusToText(m_ord.status));
             refreshPayButton();
             refreshCancelButton();
+            refreshRescheduleButton();
 
             QMessageBox::information(this, "成功", obj.value(Protocol::KEY_MESSAGE).toString());
             emit orderCanceled(m_ord.id);
@@ -229,18 +234,18 @@ void OrderDetailDialog::refreshCancelButton()
     bool enable = false;
     QString text = "不可取消";
 
-    if (NetworkManager::instance()->m_username.isEmpty()) {
+    if (!NetworkManager::instance()->isLoggedIn()) {
         enable = false;
-        text = "未登录不可取消订单";
+        text = "未登录";
     } else if (m_ord.status == Common::OrderStatus::Canceled) {
         enable = false;
-        text = "已退票不可取消订单";
+        text = "不可取消已退票订单";
     } else if (m_ord.status == Common::OrderStatus::Finished) {
         enable = false;
-        text = "已完成不可取消订单";
+        text = "不可取消已完成订单";
     } else if (m_ord.status == Common::OrderStatus::Rescheduled) {
         enable = false;
-        text = "已改签不可取消订单";
+        text = "不可取消已改签订单";
     } else {
         enable = !m_waitingCancelResp && !m_waitingPayResp;
         text = m_waitingCancelResp ? "取消中..." : "取消订单";
@@ -251,7 +256,7 @@ void OrderDetailDialog::refreshCancelButton()
 }
 
 void OrderDetailDialog::on_btnCancel_clicked()
-{
+{    
     if (NetworkManager::instance()->m_username.isEmpty()) {
         QMessageBox::warning(this, "提示", "未登录，无法取消订单。");
         refreshCancelButton();
@@ -283,6 +288,7 @@ void OrderDetailDialog::on_btnCancel_clicked()
     m_waitingCancelResp = true;
     refreshPayButton();
     refreshCancelButton();
+    refreshRescheduleButton();
 
     QJsonObject data;
     data.insert("username", NetworkManager::instance()->m_username);
@@ -302,7 +308,6 @@ void OrderDetailDialog::on_btnReschedule_clicked()
         return;
     }
 
-    // 只有本用户允许改签
     if (m_sourceText != "本用户") {
         QMessageBox::warning(this, "提示", "仅本用户的订单允许改签。");
         return;
@@ -339,13 +344,44 @@ void OrderDetailDialog::on_btnReschedule_clicked()
                                           .arg(m_flt.toCity.isEmpty() ? "--" : m_flt.toCity));
                 ui->lblDepartTime->setText(dtToText(m_flt.departTime));
                 ui->lblArriveTime->setText(dtToText(m_flt.arriveTime));
+                ui->lblSeatNum->setText(m_ord.seatNum.isEmpty() ? "--" : m_ord.seatNum);
 
                 // 刷新按钮：如果补差价 pendingPayment>0，支付按钮应可用
                 m_waitingPayResp = false;
                 m_waitingCancelResp = false;
                 refreshPayButton();
                 refreshCancelButton();
+                refreshRescheduleButton();
             });
 
     dlg.exec();
+}
+
+void OrderDetailDialog::refreshRescheduleButton()
+{
+    bool enable = false;
+    QString text = "不可改签";
+
+    if (!NetworkManager::instance()->isLoggedIn()) {
+        enable = false;
+        text = "未登录";
+    } else if (m_sourceText != "本用户") {
+        enable = false;
+        text = "仅本用户订单可改签";
+    } else if (m_ord.status == Common::OrderStatus::Canceled) {
+        enable = false;
+        text = "已退票不可改签";
+    } else if (m_ord.status == Common::OrderStatus::Finished) {
+        enable = false;
+        text = "已完成不可改签";
+    } else if (m_ord.status == Common::OrderStatus::Rescheduled) {
+        enable = false;
+        text = "已改签";
+    } else {
+        enable = !m_waitingPayResp && !m_waitingCancelResp;
+        text = enable ? "改签" : "处理中...";
+    }
+
+    ui->btnReschedule->setEnabled(enable);
+    ui->btnReschedule->setText(text);
 }

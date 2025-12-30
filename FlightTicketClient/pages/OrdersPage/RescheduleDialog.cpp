@@ -105,7 +105,14 @@ void RescheduleDialog::sendFlightSearch()
             m_waitingSearch = false;
             if (m_searchConn) { disconnect(m_searchConn); m_searchConn = {}; }
 
-            QMessageBox::critical(self, "查询失败", obj.value(Protocol::KEY_MESSAGE).toString());
+            QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+            if(!msg.contains("暂无")){
+                QMessageBox::critical(self, "查询失败", msg);
+            }
+            else{
+                QMessageBox::warning(self, "查询失败", "没有符合条件的航班");
+            }
             return;
         }
 
@@ -119,8 +126,24 @@ void RescheduleDialog::sendFlightSearch()
 
         self->m_flights = Common::flightsFromJsonArray(flightsArr);
 
+        // 过滤不允许同航班
+        self->m_showFlights.clear();
         self->m_model->removeRows(0, self->m_model->rowCount());
+
         for (const auto &f : self->m_flights) {
+
+            if (f.fromCity != self->m_oriFlight.fromCity || f.toCity != self->m_oriFlight.toCity)
+                continue;
+
+            const bool sameNo   = (!self->m_oriFlight.flightNo.isEmpty() && f.flightNo == self->m_oriFlight.flightNo);
+            const bool sameTime = (self->m_oriFlight.departTime.isValid() && f.departTime == self->m_oriFlight.departTime);
+
+            if (sameNo && sameTime) {
+                continue;
+            }
+
+            self->m_showFlights.append(f);
+
             QList<QStandardItem*> row;
             row << new QStandardItem(QString::number(f.id));
             row << new QStandardItem(f.flightNo);
@@ -131,6 +154,10 @@ void RescheduleDialog::sendFlightSearch()
             row << new QStandardItem(centsToYuanText2(f.priceCents));
             row << new QStandardItem(QString::number(f.seatLeft));
             self->m_model->appendRow(row);
+        }
+
+        if(m_showFlights.empty()){
+            QMessageBox::warning(self, "查询失败", "没有符合条件的航班");
         }
     });
 
