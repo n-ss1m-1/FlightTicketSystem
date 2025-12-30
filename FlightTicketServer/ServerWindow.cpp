@@ -135,6 +135,13 @@ ServerWindow::ServerWindow(QWidget *parent)
             if (DBManager::instance().isConnected()) {
                 qInfo() << "数据库连接状态正常";
 
+                // 设置初始界面为日志页面
+                // 假设选项卡控件对象名是 tabWidget
+                if (ui->tabWidget) {
+                    // 找到日志页面所在的索引 设置为初始页面
+                    ui->tabWidget->setCurrentIndex(0);
+                }
+
                 // 显示主窗口
                 this->show();
 
