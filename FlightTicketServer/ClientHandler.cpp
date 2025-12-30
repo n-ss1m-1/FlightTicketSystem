@@ -134,11 +134,34 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         qInfo() << "Register request:" << username;
 
-        // 检查用户是否已存在
+        // 检查用户是否已存在(用户名 电话号码 身份证)
         Common::UserInfo existUser;
         if (db.getUserByUsername(username, existUser) == DBResult::Success)
         {
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在"));
+            return;
+        }
+        if (db.getUserByPhone(phone, existUser, &errMsg) == DBResult::Success)
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该手机号已被注册，请更换手机号或直接登录"));
+            return;
+        }
+        if (!errMsg.isEmpty())
+        {
+            qCritical() << "Check phone exist DB Error:" << errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：查询手机号状态异常"));
+            return;
+        }
+
+        if (db.getUserByIdCard(idCard, existUser, &errMsg) == DBResult::Success)
+        {
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该身份证号已关联其他账号，请确认信息后重试"));
+            return;
+        }
+        if (!errMsg.isEmpty())
+        {
+            qCritical() << "Check idCard exist DB Error:" << errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：查询身份证状态异常"));
             return;
         }
 

@@ -163,7 +163,7 @@ Common::PassengerInfo DBManager::passengerFromQuery(const QSqlQuery& query,const
 {
     Common::PassengerInfo passenger;
     passenger.id=query.value("id").toLongLong();
-    passenger.user_id=query.value("userId").toLongLong();
+    passenger.user_id=query.value("user_id").toLongLong();
     passenger.name=query.value("name").toString();
     passenger.idCard=query.value("id_card").toString();
     return passenger;
@@ -259,6 +259,59 @@ DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& user,QString* er
 
     user=userFromQuery(query);
     return DBResult::Success;
+}
+// 实现：根据手机号查询用户是否存在（复用现有Query()方法）
+DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& existUser, QString* errMsg)
+{
+    //构造查询SQL
+    QString sql = "select * from user where phone = ? limit 1";
+    QList<QVariant> params;
+    params << phone;
+
+    //执行
+    QSqlQuery query = this->Query(sql, params, errMsg);
+    //检查Query()执行是否出现错误
+    if (errMsg && !errMsg->isEmpty()) {
+        qCritical() << "查询手机号失败：" << *errMsg;
+        return DBResult::QueryFailed;
+    }
+
+    //判断查询结果是否存在(存在则表示手机号已被注册)
+    if (query.next()) {
+        existUser.username = query.value("username").toString();
+        existUser.phone = query.value("phone").toString();
+        return DBResult::Success;
+    }
+
+    //无查询结果(手机号未被注册)
+    return DBResult::QueryFailed;
+}
+
+// 实现：根据身份证号查询用户是否存在(复用现有Query()方法)
+DBResult DBManager::getUserByIdCard(const QString& id_card, Common::UserInfo& existUser, QString* errMsg)
+{
+    //构造查询SQL(limit 1 提升查询效率,只需确认是否存在即可)
+    QString sql = "select * from user where id_card = ? limit 1";
+    QList<QVariant> params;
+    params << id_card;
+
+    //执行查询
+    QSqlQuery query = this->Query(sql, params, errMsg);
+    //检查Query()执行是否出现错误
+    if (errMsg && !errMsg->isEmpty()) {
+        qCritical() << "查询身份证号失败：" << *errMsg;
+        return DBResult::QueryFailed;
+    }
+
+    //判断查询结果是否存在(存在则表示身份证已被注册)
+    if (query.next()) {
+        existUser.username = query.value("username").toString();
+        existUser.idCard = query.value("id_card").toString();
+        return DBResult::Success;
+    }
+
+    // 5. 无查询结果(身份证未被注册)
+    return DBResult::QueryFailed;
 }
 DBResult DBManager::addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg)
 {
