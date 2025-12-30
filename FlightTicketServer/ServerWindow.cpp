@@ -305,7 +305,7 @@ void ServerWindow::refreshOrders()
 
         // 第5列：状态
         int status = query.value(5).toInt();
-        QString statusStr = (status == 0) ? "已预订" : (status == 1) ? "已支付" : (status == 2) ? "已取消" : "未知";
+        QString statusStr = (status == 0) ? "已预订" : (status == 1) ? "已支付" : (status == 2) ? "已改签" : (status == 3) ? "已取消" : (status == 4) ? "已完成" : "未知";
         ui->tableOrders->setItem(row, 5, new QTableWidgetItem(statusStr));
     }
 }
