@@ -381,12 +381,18 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
                  << "cacheHas=" << m_flightCache.contains(m_pendingBookFlightId)
                  << "cacheSize=" << m_flightCache.size();
 
-        Common::FlightInfo flt = m_flightCache.value(m_pendingBookFlightId);
-        PassengerPickDialog dlg(self, others, flt, this);
-        if (dlg.exec() == QDialog::Accepted) {
-            auto chosen = dlg.selectedPassenger();
-            sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);
-        }
+        const qint64 flightId = m_pendingBookFlightId;
+        Common::FlightInfo flt = m_flightCache.value(flightId);
+
+        auto dlg = new PassengerPickDialog(self, others, flt, this);
+        dlg->setAttribute(Qt::WA_DeleteOnClose);
+
+        connect(dlg, &QDialog::accepted, this, [this, dlg, flightId](){
+            auto chosen = dlg->selectedPassenger();
+            sendCreateOrder(flightId, chosen.name, chosen.idCard);
+        });
+
+        dlg->open();  // 非阻塞
         return;
     }
 
