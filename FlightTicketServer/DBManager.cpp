@@ -841,7 +841,6 @@ DBResult DBManager::cancelOrder(qint64 orderId,bool autoManageTransaction,QStrin
     }
 
     qint64 flightId=flightQuery.value("flight_id").toLongLong();
-    qDebug()<<"flightId: "<<flightId;
     //3.航班座位+1
     QString seatSql="update flight set seat_left=seat_left+1 where id=?";
     QList<QVariant>seatParams;

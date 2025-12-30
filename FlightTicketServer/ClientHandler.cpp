@@ -585,7 +585,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         DBResult res=db.getOrdersByUserId(userId,ordersAndflights,&errMsg);
 
-        if(res == DBResult::Success)
+        if(res == DBResult::Success || res == DBResult::NoData)
         {
             QJsonArray orderAndflightArr = Common::ordersAndflightsToJsonArray(ordersAndflights);
             QJsonObject respData;
@@ -619,7 +619,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         DBResult res=db.getOrdersByRealName(realName,idCard,ordersAndflights,&errMsg);
 
-        if(res == DBResult::Success)
+        if(res == DBResult::Success || res == DBResult::NoData)
         {
             QJsonArray orderAndflightArr = Common::ordersAndflightsToJsonArray(ordersAndflights);
             QJsonObject respData;
