@@ -608,9 +608,9 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,bool autoManageTransact
 DBResult DBManager::getOrderByFlightId(const qint64 flightId,const QString& passengerName,const QString& passengerIdCard,Common::OrderInfo& existOrder,QString* errMsg)
 {
     //构造查询SQL(limit 1 提升查询效率,只需确认是否存在即可)
-    QString sql = "select * from orders where flight_id = ? and passenger_name = ? and passenger_id_card = ? limit 1";
+    QString sql = "select * from orders where flight_id = ? and passenger_name = ? and passenger_id_card = ? and status in (?,?,?) limit 1";
     QList<QVariant> params;
-    params << flightId << passengerName << passengerIdCard;
+    params << flightId << passengerName << passengerIdCard << static_cast<int>(Common::OrderStatus::Booked) << static_cast<int>(Common::OrderStatus::Paid) << static_cast<int>(Common::OrderStatus::Finished);
 
     //执行查询
     QSqlQuery query = this->Query(sql, params, errMsg);
