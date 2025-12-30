@@ -2,6 +2,7 @@
 #include "ui_ServerWindow.h"
 #include "DBManager.h"
 #include "OnlineUserManager.h"
+#include "Common/Models.h"
 #include "AddFlightDialog.h"
 #include "AddOrderDialog.h"
 #include "AddUserDialog.h"
@@ -485,9 +486,9 @@ void ServerWindow::on_btnCancelOrder_clicked()
         return;
     }
 
-    QString sql = "UPDATE orders SET status = 2 WHERE id = ?";
+    QString sql = "UPDATE orders SET status = ? WHERE id = ?";
     QList<QVariant> params;
-    params << orderId;
+    params << static_cast<int>(Common::OrderStatus::Canceled) << orderId;
 
     QString err;
     if (DBManager::instance().update(sql, params, &err) > 0) {
