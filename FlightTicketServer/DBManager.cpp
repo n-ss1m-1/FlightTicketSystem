@@ -278,8 +278,7 @@ DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& exist
 
     //判断查询结果是否存在(存在则表示手机号已被注册)
     if (query.next()) {
-        existUser.username = query.value("username").toString();
-        existUser.phone = query.value("phone").toString();
+        existUser=userFromQuery(query);
         return DBResult::Success;
     }
 
@@ -305,8 +304,7 @@ DBResult DBManager::getUserByIdCard(const QString& id_card, Common::UserInfo& ex
 
     //判断查询结果是否存在(存在则表示身份证已被注册)
     if (query.next()) {
-        existUser.username = query.value("username").toString();
-        existUser.idCard = query.value("id_card").toString();
+        existUser=userFromQuery(query);
         return DBResult::Success;
     }
 
@@ -421,25 +419,6 @@ DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerIn
     return passengers.isEmpty()? DBResult::NoData : DBResult::Success;
 }
 
-//航班                    //flights作为传出参数
-// DBResult DBManager::searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights,QString* errMsg)
-// {
-//     QString sql="select * from flight where from_city=? and to_city=? and DATE(depart_time)=? and status=? order by depart_time asc";    //此处使用sql函数 取出日期
-
-//     QList<QVariant>params;          //转换为数据库date格式->匹配
-//     params<<fromCity<<toCity<<date.toString("yyyy-MM-dd")<<static_cast<int>(Common::FlightStatus::Normal);
-
-//     QSqlQuery query=Query(sql,params,errMsg);
-//     if(!query.isActive()) return DBResult::QueryFailed;
-
-//     //遍历结果集
-//     while(query.next())     //初始位置：-1
-//     {
-//         flights.append(flightFromQuery(query));
-//     }
-
-//     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
-// }
 DBResult DBManager::searchFlights(const Common::FlightQueryCondition& cond,QList<Common::FlightInfo>& flights, QString* errMsg)
 {
     QString sql="select * from flight";
@@ -522,19 +501,6 @@ DBResult DBManager::searchFlights(const Common::FlightQueryCondition& cond,QList
 
     return flights.isEmpty()?DBResult::NoData : DBResult::Success;
 }
-// DBResult DBManager::getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg)
-// {
-//     QString sql="select * from flight where id=?";
-//     QList<QVariant>params;
-//     params<<flightId;
-
-//     QSqlQuery query=Query(sql,params,errMsg);
-//     if(!query.isActive()) return DBResult::QueryFailed;
-//     if(!query.next()) return DBResult::NoData;
-
-//     flight=flightFromQuery(query);
-//     return DBResult::Success;
-// }
 
 //获取城市列表
 DBResult DBManager::getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg)
@@ -638,6 +604,30 @@ DBResult DBManager::createOrder(Common::OrderInfo& order,bool autoManageTransact
         return DBResult::TransactionFailed;
     }
     return DBResult::Success;
+}
+DBResult DBManager::getOrderByFlightId(const qint64 flightId,const QString& passengerName,const QString& passengerIdCard,Common::OrderInfo& existOrder,QString* errMsg)
+{
+    //构造查询SQL(limit 1 提升查询效率,只需确认是否存在即可)
+    QString sql = "select * from orders where flight_id = ? and passenger_name = ? and passenger_id_card = ? and status in (?,?,?) limit 1";
+    QList<QVariant> params;
+    params << flightId << passengerName << passengerIdCard << static_cast<int>(Common::OrderStatus::Booked) << static_cast<int>(Common::OrderStatus::Paid) << static_cast<int>(Common::OrderStatus::Finished);
+
+    //执行查询
+    QSqlQuery query = this->Query(sql, params, errMsg);
+    //检查Query()执行是否出现错误
+    if (errMsg && !errMsg->isEmpty()) {
+        qCritical() << "通过flight_id+passenger_name+passenger_id_card查询订单失败：" << *errMsg;
+        return DBResult::QueryFailed;
+    }
+
+    //判断查询结果是否存在(存在则表示该用户已对该航班下过订单)
+    if (query.next()) {
+        existOrder=orderFromQuery(query);   //返回该order
+        return DBResult::Success;
+    }
+
+    // 5. 无查询结果(该用户未下单过相关航班)
+    return DBResult::QueryFailed;
 }
 DBResult DBManager::payForOrder(qint64 orderId,QString* errMsg)
 {
