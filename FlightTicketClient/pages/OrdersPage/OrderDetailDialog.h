@@ -51,6 +51,8 @@ private:
     void refreshCancelButton();
 
     void refreshPriceLabel();
+
+    void refreshRescheduleButton();
 };
 
 #endif // ORDERDETAILDIALOG_H
