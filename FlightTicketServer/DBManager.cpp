@@ -786,7 +786,8 @@ DBResult DBManager::rescheduleOrder(Common::OrderInfo& oriOrder,Common::OrderInf
     }
 
     //根据pendingPayment->更新新订单状态(大于0->Booked 等于0->Paid)
-    newOrder.status = newOrder.pendingPayment>0?Common::OrderStatus::Booked:Common::OrderStatus::Rescheduled;
+    qDebug()<<"newOrder.pendingPayment:"<<newOrder.pendingPayment;
+    newOrder.status = newOrder.pendingPayment>0 ? (Common::OrderStatus::Booked) : (Common::OrderStatus::Paid);
     QString updateStatusSql2 = "update orders set status=? where id=?";
     QList<QVariant> statusParams2;
     statusParams2 << static_cast<int>(newOrder.status) << newOrder.id;
