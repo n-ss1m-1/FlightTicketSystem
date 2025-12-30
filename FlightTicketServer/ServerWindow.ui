@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>806</width>
+    <width>896</width>
     <height>674</height>
    </rect>
   </property>
@@ -14,12 +14,12 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QTabWidget" name="logEditor_2">
+   <widget class="QTabWidget" name="tabWidget">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>10</y>
-      <width>681</width>
+      <width>761</width>
       <height>591</height>
      </rect>
     </property>
@@ -32,7 +32,7 @@
      </attribute>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QTextEdit" name="logEditor">
+       <widget class="QTextEdit" name="textEditLog">
         <property name="readOnly">
          <bool>true</bool>
         </property>
@@ -49,7 +49,7 @@
        <rect>
         <x>11</x>
         <y>11</y>
-        <width>651</width>
+        <width>731</width>
         <height>491</height>
        </rect>
       </property>
@@ -116,7 +116,7 @@
        <rect>
         <x>15</x>
         <y>11</y>
-        <width>651</width>
+        <width>731</width>
         <height>491</height>
        </rect>
       </property>
@@ -141,7 +141,7 @@
        <rect>
         <x>11</x>
         <y>11</y>
-        <width>681</width>
+        <width>731</width>
         <height>491</height>
        </rect>
       </property>
@@ -177,8 +177,8 @@
    <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
-      <x>700</x>
-      <y>230</y>
+      <x>780</x>
+      <y>240</y>
       <width>101</width>
       <height>170</height>
      </rect>
@@ -192,7 +192,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="btnStop">
+      <widget class="QPushButton" name="btnPause">
        <property name="text">
         <string>暂停</string>
        </property>
@@ -207,13 +207,26 @@
      </item>
     </layout>
    </widget>
+   <widget class="QLabel" name="labelStatus">
+    <property name="geometry">
+     <rect>
+      <x>780</x>
+      <y>440</y>
+      <width>91</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>状态：未启动</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>806</width>
+     <width>896</width>
      <height>25</height>
     </rect>
    </property>

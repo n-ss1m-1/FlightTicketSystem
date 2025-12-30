@@ -2,6 +2,7 @@
 #define SERVERWINDOW_H
 
 #include <QMainWindow>
+#include <QTcpSocket> // 【必须加这行】
 #include "FlightServer.h"
 
 QT_BEGIN_NAMESPACE
@@ -16,32 +17,42 @@ public:
     ServerWindow(QWidget *parent = nullptr);
     ~ServerWindow();
 
-    // 供日志拦截器调用
-    static void appendLog(const QString& msg);
+    void appendLog(const QString &msg);
+
+signals:
+    void logSignal(const QString &msg);
 
 private slots:
+    void onLogReceived(const QString &msg);
+
+    // --- 按钮槽函数 ---
     void on_btnStart_clicked();
-    void on_btnStop_clicked();
+    void on_btnPause_clicked(); // 【必须声明这个】
+    // 注意：on_btnStop_clicked 已经被删除了，不要写它
+
     void on_btnRefresh_clicked();
-    void onLogReceived(const QString& msg); // 接收日志信号
+
+    // --- 业务功能 ---
     void on_btnDeleteFlight_clicked();
     void on_btnShowAddDialog_clicked();
     void on_btnCancelOrder_clicked();
     void on_btnShowAddOrderDialog_clicked();
     void on_btnDeleteUser_clicked();
     void on_btnShowAddUserDialog_clicked();
-signals:
-    void logSignal(const QString& msg); // 发送日志信号
 
 private:
-    Ui::ServerWindow *ui;
-    FlightServer *m_server;
-
     void initTables();
     void refreshOnlineUsers();
     void refreshFlights();
     void refreshAllUsers();
     void refreshOrders();
+
+private:
+    Ui::ServerWindow *ui;
+    FlightServer *m_server;
+
+    // 【核心修复】必须在这里声明这个列表，否则cpp文件里会报错
+    QList<QTcpSocket*> m_clientList;
 };
-void on_btnShowAddDialog_clicked();
+
 #endif // SERVERWINDOW_H

@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QTcpServer>
 
-class FlightServer : public QObject
+class FlightServer : public QTcpServer
 {
     Q_OBJECT
 public:
@@ -16,6 +16,7 @@ private slots:
 
 private:
     QTcpServer m_server;
+
 };
 
 #endif // FLIGHTSERVER_H

@@ -6,7 +6,7 @@
 #include <QDebug>
 
 FlightServer::FlightServer(QObject *parent)
-    : QObject(parent)
+    : QTcpServer(parent)
 {
     connect(&m_server, &QTcpServer::newConnection,
             this, &FlightServer::onNewConnection);

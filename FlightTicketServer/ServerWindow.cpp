@@ -9,11 +9,13 @@
 #include "AddFlightDialog.h"
 #include "AddOrderDialog.h"
 #include "AddUserDialog.h"
+#include <QTcpServer>
+#include <QTcpSocket> // 必须包含
 
 // 全局指针，方便把日志传给窗口
 static ServerWindow* g_window = nullptr;
 
-// 1. 自定义消息处理函数 (拦截 qDebug)
+// 自定义消息处理函数
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     Q_UNUSED(context);
@@ -25,10 +27,8 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
     case QtCriticalMsg: txt = QString("[Error] %1").arg(msg); break;
     case QtFatalMsg:    txt = QString("[Fatal] %1").arg(msg); break;
     }
-    // 打印到控制台
     fprintf(stdout, "%s\n", txt.toLocal8Bit().constData());
     fflush(stdout);
-    // 发送到窗口
     if (g_window) g_window->appendLog(txt);
 }
 
@@ -38,21 +38,31 @@ ServerWindow::ServerWindow(QWidget *parent)
     , m_server(new FlightServer(this))
 {
     ui->setupUi(this);
+    ui->tabWidget->setCurrentIndex(0);
     g_window = this;
 
     // 安装日志拦截器
     qInstallMessageHandler(myMessageOutput);
     connect(this, &ServerWindow::logSignal, this, &ServerWindow::onLogReceived);
 
+    // 关键：连接 Server 的新连接信号，维护 m_clientList
+    // 使用强转确保能访问 QTcpServer 的信号
+    QTcpServer *tcpServer = (QTcpServer*)m_server;
+
+    connect(tcpServer, &QTcpServer::newConnection, this, [=](){
+        while(tcpServer->hasPendingConnections()) {
+            QTcpSocket *sock = tcpServer->nextPendingConnection();
+            m_clientList.append(sock);
+
+            // 客户端断开时从列表移除
+            connect(sock, &QTcpSocket::disconnected, this, [=](){
+                m_clientList.removeOne(sock);
+                sock->deleteLater();
+            });
+        }
+    });
+
     initTables();
-
-    // 2. 连接数据库
-    QString errMsg;
-    // TODO: 注意！如果连不上数据库，请把下面的 " 密码" 改成你自己的密码！
-
-    bool connected = DBManager::instance().connect("127.0.0.1", 3306, "root"," 你的密码 ", "flight_ticket", &errMsg);
-    if(connected) qInfo() << "GUI初始化：数据库连接成功";
-    else qCritical() << "GUI初始化：数据库连接失败 " << errMsg;
 }
 
 ServerWindow::~ServerWindow()
@@ -66,39 +76,78 @@ void ServerWindow::appendLog(const QString &msg) {
 }
 
 void ServerWindow::onLogReceived(const QString &msg) {
-    ui->logEditor->append(msg);
+    ui->textEditLog->append(msg);
 }
 
+// ---------------------------------------------------------
+// 初始化表格 (注意航班表有7列)
+// ---------------------------------------------------------
 void ServerWindow::initTables() {
-    // 设置表头
+    // 1. 在线用户表
     if(ui->tableOnline) {
         QStringList header; header << "用户名" << "姓名" << "电话" << "状态";
         ui->tableOnline->setColumnCount(header.size());
         ui->tableOnline->setHorizontalHeaderLabels(header);
     }
+    // 2. 航班表 (7列：ID, 航班号, 出发, 到达, 时间, 余票, price)
     if(ui->tableFlights) {
-        QStringList header; header << "ID" << "航班号" << "出发" << "到达" << "时间" << "余票";
+        QStringList header;
+        header << "ID" << "航班号" << "出发" << "到达" << "时间" << "余票" << "价格";
         ui->tableFlights->setColumnCount(header.size());
         ui->tableFlights->setHorizontalHeaderLabels(header);
     }
 }
 
+// ---------------------------------------------------------
+// 启动逻辑
+// ---------------------------------------------------------
 void ServerWindow::on_btnStart_clicked() {
-    if (m_server->start(12345)) {
-        ui->btnStart->setEnabled(false);
-        ui->btnStop->setEnabled(true);
+    QTcpServer *serverBase = (QTcpServer*)m_server;
+
+    if (serverBase->listen(QHostAddress::Any, 12345)) {
+        ui->btnStart->setEnabled(false); // 启动变灰
+        ui->btnPause->setEnabled(true);  // 暂停变亮
+
+        // 更新状态标签 (确保UI里有这个Label)
+        ui->labelStatus->setText("状态：运行中");
+
         QMessageBox::information(this, "成功", "服务器已启动 (端口12345)");
+        on_btnRefresh_clicked();
     } else {
         QMessageBox::critical(this, "失败", "服务器启动失败，端口可能被占用");
     }
 }
 
-void ServerWindow::on_btnStop_clicked() {
-    // 暂时没有停止逻辑，只是模拟
-    qInfo() << "停止服务信号已发送...";
-    ui->btnStart->setEnabled(true);
-    ui->btnStop->setEnabled(false);
+// ---------------------------------------------------------
+// 暂停/停止逻辑 (合并了以前的停止功能)
+// ---------------------------------------------------------
+void ServerWindow::on_btnPause_clicked()
+{
+    QTcpServer *serverBase = (QTcpServer*)m_server;
+
+    // 1. 停止监听新连接
+    if (serverBase->isListening()) {
+        serverBase->close();
+        ui->textEditLog->append("[Info] 服务已停止监听。");
+    }
+
+    // 2. 通知并断开所有客户端
+    for (QTcpSocket *socket : m_clientList) {
+        if (socket->state() == QAbstractSocket::ConnectedState) {
+            socket->write("CMD:SERVER_PAUSED");
+            socket->waitForBytesWritten(1000);
+            socket->disconnectFromHost();
+        }
+    }
+
+    // 3. 界面重置为“可启动”状态
+    ui->btnStart->setEnabled(true);  // 允许再次点击启动
+    ui->btnPause->setEnabled(false); // 禁用暂停
+    ui->labelStatus->setText("状态：已暂停");
 }
+
+// 注意：on_btnStop_clicked 已经被彻底删除
+
 void ServerWindow::on_btnRefresh_clicked()
 {
     refreshOnlineUsers();
@@ -107,6 +156,7 @@ void ServerWindow::on_btnRefresh_clicked()
     refreshOrders();
     qInfo() << "数据已手动刷新";
 }
+
 void ServerWindow::refreshOnlineUsers() {
     if(!ui->tableOnline) return;
     QList<Common::UserInfo> users = OnlineUserManager::instance().getAllUsers();
@@ -121,9 +171,12 @@ void ServerWindow::refreshOnlineUsers() {
     }
 }
 
+// ---------------------------------------------------------
+// 刷新航班 (修复余票覆盖问题)
+// ---------------------------------------------------------
 void ServerWindow::refreshFlights() {
     if(!ui->tableFlights) return;
-    // 直接用 SQL 查询，绕过 DBManager 接口缺失的问题
+
     QString sql = "SELECT * FROM flight ORDER BY id DESC";
     QSqlQuery query = DBManager::instance().Query(sql);
 
@@ -131,28 +184,32 @@ void ServerWindow::refreshFlights() {
     while (query.next()) {
         int row = ui->tableFlights->rowCount();
         ui->tableFlights->insertRow(row);
+
         ui->tableFlights->setItem(row, 0, new QTableWidgetItem(query.value("id").toString()));
         ui->tableFlights->setItem(row, 1, new QTableWidgetItem(query.value("flight_no").toString()));
         ui->tableFlights->setItem(row, 2, new QTableWidgetItem(query.value("from_city").toString()));
         ui->tableFlights->setItem(row, 3, new QTableWidgetItem(query.value("to_city").toString()));
-        ui->tableFlights->setItem(row, 4, new QTableWidgetItem(query.value("depart_time").toDateTime().toString("MM-dd HH:mm")));
+
+        QDateTime depTime = query.value("depart_time").toDateTime();
+        ui->tableFlights->setItem(row, 4, new QTableWidgetItem(depTime.toString("yyyy-MM-dd HH:mm")));
+
+        // 第5列：余票
         ui->tableFlights->setItem(row, 5, new QTableWidgetItem(query.value("seat_left").toString()));
+
+        // 第6列：价格
+        int priceCents = query.value("price_cents").toInt();
+        double priceYuan = priceCents / 100.0;
+        ui->tableFlights->setItem(row, 6, new QTableWidgetItem(QString::number(priceYuan, 'f', 2) + " 元"));
     }
 }
-// ServerWindow.cpp
 
-// ---------------------------------------------------------
-// 新功能 1：刷新所有注册用户 (不仅仅是在线的)
-// ---------------------------------------------------------
 void ServerWindow::refreshAllUsers()
 {
     if(!ui->tableAllUsers) return;
 
-    // 查库：查所有用户
     QString sql = "SELECT * FROM user";
     QSqlQuery query = DBManager::instance().Query(sql);
 
-    // 设置表头
     QStringList header;
     header << "ID" << "用户名" << "真实姓名" << "电话" << "身份证";
     ui->tableAllUsers->setColumnCount(header.size());
@@ -170,30 +227,23 @@ void ServerWindow::refreshAllUsers()
     }
 }
 
-// ---------------------------------------------------------
-// 新功能 2：删除航班
-// ---------------------------------------------------------
 void ServerWindow::on_btnDeleteFlight_clicked()
 {
-    // 1. 获取当前选中的行
     int row = ui->tableFlights->currentRow();
     if (row < 0) {
         QMessageBox::warning(this, "提示", "请先选中一行航班！");
         return;
     }
 
-    // 2. 获取航班 ID (假设 ID 在第0列)
     QString flightId = ui->tableFlights->item(row, 0)->text();
     QString flightNo = ui->tableFlights->item(row, 1)->text();
 
-    // 3. 弹窗确认
     QMessageBox::StandardButton reply;
     reply = QMessageBox::question(this, "确认删除",
                                   "确定要删除航班 " + flightNo + " 吗？",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::No) return;
 
-    // 4. 执行 SQL 删除
     QString sql = "DELETE FROM flight WHERE id = ?";
     QList<QVariant> params;
     params << flightId;
@@ -203,32 +253,27 @@ void ServerWindow::on_btnDeleteFlight_clicked()
 
     if (ret > 0) {
         QMessageBox::information(this, "成功", "删除成功！");
-        refreshFlights(); // 刷新表格
+        refreshFlights();
     } else {
         QMessageBox::critical(this, "失败", "删除失败: " + err);
     }
 }
+
 void ServerWindow::on_btnShowAddDialog_clicked()
 {
-    // 1. 创建弹窗对象
     AddFlightDialog dlg(this);
-
-    // 2. 显示弹窗，并等待结果
-    // dlg.exec() 会阻塞在这里，直到用户点确认(accept)或取消(reject)
     if (dlg.exec() == QDialog::Accepted) {
-        // 3. 如果用户添加成功了，我们就刷新表格
         refreshFlights();
     }
 }
+
 // ---------------------------------------------------------
-// 新功能 4：订单管理 (刷新列表)
+// 刷新订单 (修复列越界)
 // ---------------------------------------------------------
 void ServerWindow::refreshOrders()
 {
     if(!ui->tableOrders) return;
 
-    // 这是一个多表联合查询 (Join)，为了同时显示 用户名 和 航班号
-    // 如果你觉得太复杂，也可以直接 SELECT * FROM orders
     QString sql = "SELECT o.id, u.username, f.flight_no, o.passenger_name, o.price_cents, o.status "
                   "FROM orders o "
                   "LEFT JOIN user u ON o.user_id = u.id "
@@ -237,7 +282,7 @@ void ServerWindow::refreshOrders()
 
     QSqlQuery query = DBManager::instance().Query(sql);
 
-    // 设置表头
+    // 表头
     QStringList header;
     header << "订单ID" << "下单用户" << "航班号" << "乘客姓名" << "价格" << "状态";
     ui->tableOrders->setColumnCount(header.size());
@@ -252,39 +297,35 @@ void ServerWindow::refreshOrders()
         ui->tableOrders->setItem(row, 1, new QTableWidgetItem(query.value(1).toString()));
         ui->tableOrders->setItem(row, 2, new QTableWidgetItem(query.value(2).toString()));
         ui->tableOrders->setItem(row, 3, new QTableWidgetItem(query.value(3).toString()));
-        ui->tableOrders->setItem(row, 4, new QTableWidgetItem(query.value(4).toString()));
 
-        // 状态转文字
+        // 第4列：价格
+        int priceCents = query.value(4).toInt();
+        double priceYuan = priceCents / 100.0;
+        ui->tableOrders->setItem(row, 4, new QTableWidgetItem(QString::number(priceYuan, 'f', 2) + " 元"));
+
+        // 第5列：状态
         int status = query.value(5).toInt();
-        QString statusStr = (status == 0) ? "已预订" : (status == 1) ? "已支付" : "已取消";
+        QString statusStr = (status == 0) ? "已预订" : (status == 1) ? "已支付" : (status == 2) ? "已取消" : "未知";
         ui->tableOrders->setItem(row, 5, new QTableWidgetItem(statusStr));
     }
 }
 
-// ---------------------------------------------------------
-// 新功能 5：管理员强制取消订单
-// ---------------------------------------------------------
 void ServerWindow::on_btnCancelOrder_clicked()
 {
-    // 1. 获取选中行
     int row = ui->tableOrders->currentRow();
     if (row < 0) {
         QMessageBox::warning(this, "提示", "请先选中一个订单！");
         return;
     }
 
-    // 2. 获取订单ID
     QString orderId = ui->tableOrders->item(row, 0)->text();
     QString passenger = ui->tableOrders->item(row, 3)->text();
 
-    // 3. 确认
     if (QMessageBox::question(this, "确认", "确定要强制取消 " + passenger + " 的订单吗？")
         != QMessageBox::Yes) {
         return;
     }
 
-    // 4. 执行 SQL (直接改成已取消状态 2)
-    // 注意：这里最好也把座位还回去，简单起见我们先只改状态
     QString sql = "UPDATE orders SET status = 2 WHERE id = ?";
     QList<QVariant> params;
     params << orderId;
@@ -292,49 +333,38 @@ void ServerWindow::on_btnCancelOrder_clicked()
     QString err;
     if (DBManager::instance().update(sql, params, &err) > 0) {
         QMessageBox::information(this, "成功", "订单已取消");
-        refreshOrders(); // 刷新
+        refreshOrders();
     } else {
         QMessageBox::critical(this, "失败", "操作失败: " + err);
     }
 }
-// ---------------------------------------------------------
-// 新功能 6：显示补录订单弹窗
-// ---------------------------------------------------------
+
 void ServerWindow::on_btnShowAddOrderDialog_clicked()
 {
     AddOrderDialog dlg(this);
     if (dlg.exec() == QDialog::Accepted) {
-        // 如果添加成功，刷新列表
         refreshOrders();
-        // 顺便刷新一下航班列表（因为座位数变了）
         refreshFlights();
     }
 }
-// ---------------------------------------------------------
-// 新功能 7：删除用户
-// ---------------------------------------------------------
+
 void ServerWindow::on_btnDeleteUser_clicked()
 {
-    // 1. 获取选中行
     int row = ui->tableAllUsers->currentRow();
     if (row < 0) {
         QMessageBox::warning(this, "提示", "请先选中一个用户！");
         return;
     }
 
-    // 2. 获取用户ID (假设ID在第0列) 和 用户名 (第1列)
     QString userId = ui->tableAllUsers->item(row, 0)->text();
     QString username = ui->tableAllUsers->item(row, 1)->text();
 
-    // 3. 弹窗确认
-    // 注意：根据数据库设置，删除用户可能会把他的订单 user_id 设为 NULL，或者连带删除
     if (QMessageBox::question(this, "危险操作",
                               "确定要注销用户 [" + username + "] 吗？\n该操作无法撤销！")
         != QMessageBox::Yes) {
         return;
     }
 
-    // 4. 执行删除
     QString sql = "DELETE FROM user WHERE id = ?";
     QList<QVariant> params;
     params << userId;
@@ -342,19 +372,17 @@ void ServerWindow::on_btnDeleteUser_clicked()
     QString err;
     if (DBManager::instance().update(sql, params, &err) > 0) {
         QMessageBox::information(this, "成功", "用户已删除");
-        refreshAllUsers(); // 刷新列表
-        refreshOnlineUsers(); // 万一他正好在线，也刷新一下在线列表
+        refreshAllUsers();
+        refreshOnlineUsers();
     } else {
         QMessageBox::critical(this, "失败", "删除失败: " + err);
     }
 }
-// ---------------------------------------------------------
-// 新功能 8：显示添加用户弹窗
-// ---------------------------------------------------------
+
 void ServerWindow::on_btnShowAddUserDialog_clicked()
 {
     AddUserDialog dlg(this);
     if (dlg.exec() == QDialog::Accepted) {
-        refreshAllUsers(); // 成功后刷新表格
+        refreshAllUsers();
     }
 }
