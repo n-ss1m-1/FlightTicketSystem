@@ -9,6 +9,7 @@
 #include "PassengerPickDialog.h"
 #include <QShowEvent>
 #include "../OrdersPage/OrderDetailDialog.h"
+#include <QTimer>
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
@@ -266,21 +267,20 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
 
         Common::FlightInfo flt = m_flightCache.value(ord.flightId);
 
-        qint64 paidOrderId = 0;
+        // 退出当前 onJsonReceived 调用栈后再打开支付窗，避免 processBuffer 重入
+        QTimer::singleShot(0, this, [this, ord, flt]() mutable {
+            auto *dlg = new OrderDetailDialog(this);
+            dlg->setAttribute(Qt::WA_DeleteOnClose);
+            dlg->setData(ord, flt, "本用户");
 
-        OrderDetailDialog dlg(this);
-        dlg.setData(ord, flt, "本用户");
+            connect(dlg, &OrderDetailDialog::orderPaid, this, [this, dlg](qint64 orderId){
+                emit requestGoOrders(orderId);
+                dlg->accept();
+            });
 
-        connect(&dlg, &OrderDetailDialog::orderPaid, this, [&](qint64 orderId){
-            paidOrderId = orderId;
-            dlg.accept();
+            dlg->open();
         });
 
-        dlg.exec();
-
-        if (paidOrderId > 0) {
-            emit requestGoOrders(paidOrderId);
-        }
         return;
     }
 

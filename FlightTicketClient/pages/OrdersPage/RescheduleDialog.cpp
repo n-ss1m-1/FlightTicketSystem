@@ -61,11 +61,18 @@ void RescheduleDialog::sendFlightSearch()
         QMessageBox::warning(this, "提示", "原订单航班出发地/目的地为空，无法改签查询。");
         return;
     }
-
     if (!NetworkManager::instance()->isLoggedIn()) {
         QMessageBox::warning(this, "提示", "未登录，无法查询航班。");
         return;
     }
+
+    // 避免叠加连接
+    if (m_searchConn) {
+        disconnect(m_searchConn);
+        m_searchConn = {};
+    }
+
+    m_waitingSearch = true;
 
     QJsonObject data;
     data["fromCity"] = m_oriFlight.fromCity;
@@ -83,25 +90,29 @@ void RescheduleDialog::sendFlightSearch()
     auto nm = NetworkManager::instance();
     QPointer<RescheduleDialog> self(this);
 
-    QMetaObject::Connection conn;
-    conn = connect(nm, &NetworkManager::jsonReceived, this, [=](const QJsonObject &obj) mutable {
-        if (!self) { disconnect(conn); return; }
-
-        QJsonDocument doc(obj);
-        qDebug() << "==== [服务器返回的原始数据] ====";
-        qDebug() << doc.toJson(QJsonDocument::Indented);
-        qDebug() << "================================";
+    m_searchConn = connect(nm, &NetworkManager::jsonReceived, this, [=](const QJsonObject &obj) mutable {
+        if (!self) {
+            if (m_searchConn) { disconnect(m_searchConn); m_searchConn = {}; }
+            return;
+        }
 
         const QString type = obj.value(Protocol::KEY_TYPE).toString();
 
+        // 只处理本次查询期间的回包
+        if (!m_waitingSearch) return;
+
         if (type == Protocol::TYPE_ERROR) {
+            m_waitingSearch = false;
+            if (m_searchConn) { disconnect(m_searchConn); m_searchConn = {}; }
+
             QMessageBox::critical(self, "查询失败", obj.value(Protocol::KEY_MESSAGE).toString());
-            disconnect(conn);
             return;
         }
 
         if (type != Protocol::TYPE_FLIGHT_SEARCH_RESP) return;
-        disconnect(conn);
+
+        m_waitingSearch = false;
+        if (m_searchConn) { disconnect(m_searchConn); m_searchConn = {}; }
 
         const QJsonObject dataObj = obj.value(Protocol::KEY_DATA).toObject();
         const QJsonArray flightsArr = dataObj.value("flights").toArray();
@@ -125,6 +136,7 @@ void RescheduleDialog::sendFlightSearch()
 
     nm->sendJson(req);
 }
+
 
 void RescheduleDialog::on_btnConfirm_clicked()
 {

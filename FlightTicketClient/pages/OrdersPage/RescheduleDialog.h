@@ -39,6 +39,10 @@ private:
 
     void sendFlightSearch();
     void sendReschedule(qint64 newFlightId);
+
+    QMetaObject::Connection m_searchConn;
+    bool m_waitingSearch = false;
+
 };
 
 #endif // RESCHEDULEDIALOG_H

@@ -164,6 +164,9 @@ void OrderDetailDialog::onJsonReceived(const QJsonObject &obj)
 {
     const QString type = obj.value(Protocol::KEY_TYPE).toString();
 
+    qDebug() << "[OrderDetailDialog] recv type =" << type
+             << "waiting=" << m_waitingPayResp;
+
     // 取消订单
     if (m_waitingCancelResp) {
         if (type == Protocol::TYPE_ERROR) {
