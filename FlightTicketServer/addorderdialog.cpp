@@ -42,7 +42,12 @@ void AddOrderDialog::on_btnConfirm_clicked()
     order.passengerName = name;
     order.passengerIdCard = idCard;
     // 价格、座位号、状态会自动生成，不用填
+    int status = ui->comboStatus->currentIndex(); // 或者 currentText().toInt()
 
+    // 修改 SQL
+    QList<QVariant> params;
+    QString sql = "INSERT INTO orders (..., status) VALUES (..., ?)";
+    params << '... '<< status;
     // 4. 调用 DBManager 现成的接口
     QString err;
     DBResult ret = DBManager::instance().createOrder(order, &err);
