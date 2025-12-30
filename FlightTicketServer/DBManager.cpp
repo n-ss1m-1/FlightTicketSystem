@@ -441,15 +441,15 @@ DBResult DBManager::searchFlights(const Common::FlightQueryCondition& cond,QList
         whereClauses.append("to_city=?");
         params.append(cond.toCity);
     }
-    if(cond.maxDepartDate.isValid())
+    if(cond.minDepartDate.isValid())
     {
         whereClauses.append("date(depart_time)>=?");
         params.append(cond.minDepartDate.toString("yyyy-MM-dd"));
     }
-    if(cond.minDepartDate.isValid())
+    if(cond.maxDepartDate.isValid())
     {
         whereClauses.append("date(depart_time)<=?");
-        params.append(cond.minDepartDate.toString("yyyy-MM-dd"));
+        params.append(cond.maxDepartDate.toString("yyyy-MM-dd"));
     }
     if(cond.minDepartTime.isValid())
     {
