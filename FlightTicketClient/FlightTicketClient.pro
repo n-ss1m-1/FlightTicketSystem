@@ -19,6 +19,7 @@ SOURCES += \
     pages/OrdersPage/OrderDetailDialog.cpp \
     pages/OrdersPage/OrdersPage.cpp \
     pages/OrdersPage/RescheduleDialog.cpp \
+    pages/ProfilePage/AddPassengerDialog.cpp \
     pages/ProfilePage/ChangePhoneDialog.cpp \
     pages/ProfilePage/ChangePwdDialog.cpp \
     pages/ProfilePage/LoginDialog.cpp \
@@ -35,6 +36,7 @@ HEADERS += \
     pages/OrdersPage/OrderDetailDialog.h \
     pages/OrdersPage/OrdersPage.h \
     pages/OrdersPage/RescheduleDialog.h \
+    pages/ProfilePage/AddPassengerDialog.h \
     pages/ProfilePage/ChangePhoneDialog.h \
     pages/ProfilePage/ChangePwdDialog.h \
     pages/ProfilePage/LoginDialog.h \
@@ -49,6 +51,7 @@ FORMS += \
     pages/OrdersPage/OrderDetailDialog.ui \
     pages/OrdersPage/OrdersPage.ui \
     pages/OrdersPage/RescheduleDialog.ui \
+    pages/ProfilePage/AddPassengerDialog.ui \
     pages/ProfilePage/ChangePhoneDialog.ui \
     pages/ProfilePage/ChangePwdDialog.ui \
     pages/ProfilePage/LoginDialog.ui \
