@@ -247,7 +247,7 @@ DBResult DBManager::getUserByUsername(const QString& username,Common::UserInfo& 
 
     return DBResult::Success;
 }
-DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& user,QString* errMsg)
+DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& existUser,QString* errMsg)
 {
     QString sql="select * from user where id=?";
     QList<QVariant>params;
@@ -257,10 +257,10 @@ DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& user,QString* er
     if(!query.isActive()) return DBResult::QueryFailed;
     if(!query.next()) return DBResult::NoData;
 
-    user=userFromQuery(query);
+    existUser=userFromQuery(query);
     return DBResult::Success;
 }
-// 实现：根据手机号查询用户是否存在（复用现有Query()方法）
+//根据手机号查询用户是否存在（复用现有Query()方法）
 DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& existUser, QString* errMsg)
 {
     //构造查询SQL
@@ -286,7 +286,7 @@ DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& exist
     return DBResult::QueryFailed;
 }
 
-// 实现：根据身份证号查询用户是否存在(复用现有Query()方法)
+//根据身份证号查询用户是否存在(复用现有Query()方法)
 DBResult DBManager::getUserByIdCard(const QString& id_card, Common::UserInfo& existUser, QString* errMsg)
 {
     //构造查询SQL(limit 1 提升查询效率,只需确认是否存在即可)
@@ -417,6 +417,31 @@ DBResult DBManager::getPassengers(const qint64 user_id,QList<Common::PassengerIn
     }
 
     return passengers.isEmpty()? DBResult::NoData : DBResult::Success;
+}
+
+DBResult DBManager::getPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,Common::PassengerInfo& existPassenger,QString* errMsg)
+{
+    //构造查询SQL
+    QString sql = "select * from passenger where user_id=? and name=? and id_card=? limit 1";
+    QList<QVariant> params;
+    params << user_id << passenger_name << passenger_id_card;
+
+    //执行
+    QSqlQuery query = this->Query(sql, params, errMsg);
+    //检查Query()执行是否出现错误
+    if (errMsg && !errMsg->isEmpty()) {
+        qCritical() << "查询常用乘机人失败：" << *errMsg;
+        return DBResult::QueryFailed;
+    }
+
+    //判断查询结果是否存在(存在则表示该用户已添加该常用乘机人)
+    if (query.next()) {
+        existPassenger=passengerFromQuery(query);
+        return DBResult::Success;
+    }
+
+    //无查询结果(该用户未添加该常用乘机人)
+    return DBResult::QueryFailed;
 }
 
 DBResult DBManager::searchFlights(const Common::FlightQueryCondition& cond,QList<Common::FlightInfo>& flights, QString* errMsg)
