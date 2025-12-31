@@ -18,7 +18,7 @@ static const int ROLE_ORDER_ID = Qt::UserRole + 1;
 static QString statusToText(Common::OrderStatus s)
 {
     switch (s) {
-    case Common::OrderStatus::Booked:   return "已预订";
+    case Common::OrderStatus::Booked:   return "待支付";
     case Common::OrderStatus::Paid:     return "已支付";
     case Common::OrderStatus::Rescheduled: return "已改签";
     case Common::OrderStatus::Canceled: return "已退票";
@@ -67,6 +67,22 @@ static void resizeTableView(QTableView *tv)
         int c = cols[i];
         int add = per + (i < rem ? 1 : 0);
         tv->setColumnWidth(c, tv->columnWidth(c) + add);
+    }
+}
+
+static QColor statusToColor(Common::OrderStatus s)
+{
+    switch (s) {
+    case Common::OrderStatus::Booked:
+        return QColor(QColorConstants::Svg::orange); // 橙：已预订
+    case Common::OrderStatus::Paid:
+        return QColor(QColorConstants::Green); // 绿：已支付
+    case Common::OrderStatus::Rescheduled:
+    case Common::OrderStatus::Canceled:
+    case Common::OrderStatus::Finished:
+        return QColor(QColorConstants::Svg::grey); // 灰：已完成/已退票/已改签
+    default:
+        return QColor();
     }
 }
 
@@ -197,7 +213,14 @@ void OrdersPage::rebuildTableFromCache()
         itSource->setData(orderIdVariant(ord.id), ROLE_ORDER_ID); // orderId 不显示，但绑定到第一列 item
 
         rowItems << itSource;
-        rowItems << new QStandardItem(statusText);
+
+        auto *itStatus = new QStandardItem(statusText);
+        const QColor c = statusToColor(ord.status);
+        if (c.isValid()) {
+            itStatus->setData(QBrush(c), Qt::ForegroundRole);
+        }
+        rowItems << itStatus;
+
         rowItems << new QStandardItem(flightNo);
         rowItems << new QStandardItem(route);
         rowItems << new QStandardItem(departText);
@@ -205,6 +228,7 @@ void OrdersPage::rebuildTableFromCache()
         rowItems << new QStandardItem(passengerText);
         rowItems << new QStandardItem(seatText);
         rowItems << new QStandardItem(priceText);
+
 
         model->appendRow(rowItems);
     }
