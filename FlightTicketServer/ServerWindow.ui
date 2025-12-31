@@ -14,222 +14,187 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QTabWidget" name="tabWidget">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>10</y>
-      <width>761</width>
-      <height>591</height>
-     </rect>
-    </property>
-    <property name="currentIndex">
-     <number>4</number>
-    </property>
-    <widget class="QWidget" name="tab">
-     <attribute name="title">
-      <string>日志</string>
-     </attribute>
-     <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tab">
+       <attribute name="title">
+        <string>日志</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QTextEdit" name="textEditLog">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_3">
+       <attribute name="title">
+        <string>航班列表</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QTableWidget" name="tableFlights"/>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <item>
+            <widget class="QPushButton" name="btnShowAddDialog">
+             <property name="text">
+              <string>添加新航班</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnDeleteFlight">
+             <property name="text">
+              <string>删除选中航班</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_5">
+       <attribute name="title">
+        <string>订单管理</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QTableWidget" name="tableOrders"/>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_2" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QPushButton" name="btnShowAddOrderDialog">
+             <property name="text">
+              <string>补录订单</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnCancelOrder">
+             <property name="text">
+              <string>删除订单</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_2">
+       <attribute name="title">
+        <string>在线用户</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QTableWidget" name="tableOnline"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_4">
+       <attribute name="title">
+        <string>用户管理</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QTableWidget" name="tableAllUsers"/>
+        </item>
+        <item>
+         <widget class="QWidget" name="widget_3" native="true">
+          <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <item>
+            <widget class="QPushButton" name="btnShowAddUserDialog">
+             <property name="text">
+              <string>添加新用户</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnDeleteUser">
+             <property name="text">
+              <string>删除选中用户</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <widget class="QTextEdit" name="textEditLog">
-        <property name="readOnly">
-         <bool>true</bool>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnStart">
+        <property name="text">
+         <string>启动</string>
         </property>
        </widget>
       </item>
-     </layout>
-    </widget>
-    <widget class="QWidget" name="tab_3">
-     <attribute name="title">
-      <string>航班列表</string>
-     </attribute>
-     <widget class="QTableWidget" name="tableFlights">
-      <property name="geometry">
-       <rect>
-        <x>11</x>
-        <y>11</y>
-        <width>731</width>
-        <height>491</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btnDeleteFlight">
-      <property name="geometry">
-       <rect>
-        <x>160</x>
-        <y>520</y>
-        <width>99</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>删除选中航班</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btnShowAddDialog">
-      <property name="geometry">
-       <rect>
-        <x>410</x>
-        <y>520</y>
-        <width>99</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>添加新航班</string>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab_5">
-     <attribute name="title">
-      <string>订单管理</string>
-     </attribute>
-     <widget class="QPushButton" name="btnCancelOrder">
-      <property name="geometry">
-       <rect>
-        <x>160</x>
-        <y>520</y>
-        <width>93</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>删除订单</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btnShowAddOrderDialog">
-      <property name="geometry">
-       <rect>
-        <x>410</x>
-        <y>520</y>
-        <width>93</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>补录订单</string>
-      </property>
-     </widget>
-     <widget class="QTableWidget" name="tableOrders">
-      <property name="geometry">
-       <rect>
-        <x>15</x>
-        <y>11</y>
-        <width>731</width>
-        <height>491</height>
-       </rect>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="tab_2">
-     <attribute name="title">
-      <string>在线用户</string>
-     </attribute>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QTableWidget" name="tableOnline"/>
+       <widget class="QPushButton" name="btnPause">
+        <property name="text">
+         <string>暂停</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnRefresh">
+        <property name="text">
+         <string>刷新</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelStatus">
+        <property name="text">
+         <string>状态：未启动</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
       </item>
      </layout>
-    </widget>
-    <widget class="QWidget" name="tab_4">
-     <attribute name="title">
-      <string>用户管理</string>
-     </attribute>
-     <widget class="QTableWidget" name="tableAllUsers">
-      <property name="geometry">
-       <rect>
-        <x>11</x>
-        <y>11</y>
-        <width>731</width>
-        <height>491</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btnDeleteUser">
-      <property name="geometry">
-       <rect>
-        <x>160</x>
-        <y>520</y>
-        <width>101</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>删除选中用户</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="btnShowAddUserDialog">
-      <property name="geometry">
-       <rect>
-        <x>410</x>
-        <y>520</y>
-        <width>93</width>
-        <height>28</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>添加新用户</string>
-      </property>
-     </widget>
-    </widget>
-   </widget>
-   <widget class="QWidget" name="layoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>780</x>
-      <y>240</y>
-      <width>101</width>
-      <height>170</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
-      <widget class="QPushButton" name="btnStart">
-       <property name="text">
-        <string>启动</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnPause">
-       <property name="text">
-        <string>暂停</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="btnRefresh">
-       <property name="text">
-        <string>刷新</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QLabel" name="labelStatus">
-    <property name="geometry">
-     <rect>
-      <x>780</x>
-      <y>440</y>
-      <width>91</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>状态：未启动</string>
-    </property>
-   </widget>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>896</width>
-     <height>25</height>
-    </rect>
-   </property>
+    </item>
+   </layout>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
