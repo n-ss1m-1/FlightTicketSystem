@@ -31,12 +31,6 @@ bool DBManager::connect(const QString& host,int port,const QString& user,const Q
         db.close();
     }
 
-    // db.setHostName(host);
-    // db.setPort(port);
-    // db.setDatabaseName(dbName);
-    // db.setUserName(user);
-    // db.setPassword(passwd);
-
     QStringList driverCandidates = {
         "MySQL ODBC 8.0 Unicode Driver",
         "MySQL ODBC 9.5 Unicode Driver"
@@ -260,7 +254,7 @@ DBResult DBManager::getUserById(qint64 userId,Common::UserInfo& existUser,QStrin
     existUser=userFromQuery(query);
     return DBResult::Success;
 }
-//根据手机号查询用户是否存在（复用现有Query()方法）
+//根据手机号查询用户是否存在
 DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& existUser, QString* errMsg)
 {
     //构造查询SQL
@@ -286,7 +280,7 @@ DBResult DBManager::getUserByPhone(const QString& phone, Common::UserInfo& exist
     return DBResult::QueryFailed;
 }
 
-//根据身份证号查询用户是否存在(复用现有Query()方法)
+//根据身份证号查询用户是否存在
 DBResult DBManager::getUserByIdCard(const QString& id_card, Common::UserInfo& existUser, QString* errMsg)
 {
     //构造查询SQL(limit 1 提升查询效率,只需确认是否存在即可)
@@ -356,17 +350,6 @@ DBResult DBManager::updatePhoneByUsername(const QString& username,const QString&
 //常用乘机人
 DBResult DBManager::addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg)
 {
-    //检查是否已有该常用乘机人
-    QString checkSql="select * from passenger where user_id=? and name=? and id_card=?";
-    QList<QVariant> checkParams;
-    checkParams<<user_id<<passenger_name<<passenger_id_card;
-    QSqlQuery query=Query(checkSql,checkParams,errMsg);
-    if(query.isActive() && query.next())
-    {
-        if(errMsg) *errMsg=*errMsg+"已有该常用乘机人,无需重复添加";
-        return DBResult::updateFailed;
-    }
-
     //插入乘机人表
     QString sql="insert into passenger (user_id,name,id_card) values(?,?,?)";
     QList<QVariant> params;
@@ -842,7 +825,7 @@ DBResult DBManager::cancelOrder(qint64 orderId,bool autoManageTransaction,QStrin
     if(orderAffected<=0)
     {
         if(autoManageTransaction) rollbackTransaction();
-        if(errMsg) *errMsg=*errMsg+" 订单状态更新失败或订单已取消";
+        if(errMsg) *errMsg=*errMsg+" 订单状态更新失败(订单已取消或已完成)";
         return DBResult::QueryFailed;
     }
 

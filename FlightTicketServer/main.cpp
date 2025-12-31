@@ -1,7 +1,5 @@
 #include <QApplication>
 #include "ServerWindow.h"
-#include "DBManager.h"
-#include <QInputDialog>
 
 int main(int argc, char *argv[])
 {
