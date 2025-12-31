@@ -10,6 +10,44 @@
 #include <QShowEvent>
 #include "../OrdersPage/OrderDetailDialog.h"
 #include <QTimer>
+#include <QScrollBar>
+
+// 平均分配空余空间
+static void resizeTableView(QTableView *tv)
+{
+    if (!tv || !tv->model()) return;
+
+    auto *h = tv->horizontalHeader();
+
+    h->setSectionResizeMode(QHeaderView::Interactive);
+    tv->resizeColumnsToContents();
+
+    QVector<int> cols;
+    int total = 0;
+    const int colCount = tv->model()->columnCount();
+    for (int c = 0; c < colCount; ++c) {
+        if (tv->isColumnHidden(c)) continue;
+        cols.push_back(c);
+        total += tv->columnWidth(c);
+    }
+    if (cols.isEmpty()) return;
+
+    int available = tv->viewport()->width();
+    if (tv->verticalScrollBar() && tv->verticalScrollBar()->isVisible())
+        available -= tv->verticalScrollBar()->width();
+
+    int extra = available - total;
+    if (extra <= 0) return;
+
+    int per = extra / cols.size();
+    int rem = extra % cols.size();
+
+    for (int i = 0; i < cols.size(); ++i) {
+        int c = cols[i];
+        int add = per + (i < rem ? 1 : 0);
+        tv->setColumnWidth(c, tv->columnWidth(c) + add);
+    }
+}
 
 FlightsPage::FlightsPage(QWidget *parent)
     : QWidget(parent)
@@ -18,16 +56,22 @@ FlightsPage::FlightsPage(QWidget *parent)
     ui->setupUi(this);
 
     model = new QStandardItemModel(this);
-    model->setHorizontalHeaderLabels({"ID", "航班号", "出发地", "目的地", "起飞时间", "到达时间", "票价"});
+    model->setHorizontalHeaderLabels({"ID", "航班号", "出发地", "目的地", "起飞时间", "到达时间", "票价", "余票"});
     ui->tableView->setModel(model);
     ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    ui->tableView->setColumnHidden(0, true);
+    ui->tableView->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     connect(NetworkManager::instance(), &NetworkManager::jsonReceived, this, &FlightsPage::onJsonReceived);
 
     ui->deMinDate->setDate(QDate::currentDate());
     ui->deMaxDate->setDate(QDate::currentDate());
+
+    // 双击触发
+    connect(ui->tableView, &QTableView::doubleClicked,
+            this, &FlightsPage::on_btnBook_clicked);
+
 
     requestCityList();
 }
@@ -190,7 +234,7 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
 
                 Common::FlightInfo flt = m_flightCache.value(m_pendingBookFlightId);
 
-                PassengerPickDialog dlg(self, {}, flt, this);
+                PassengerPickDialog dlg(self, {}, flt, m_profilePage ,this);
                 if (dlg.exec() == QDialog::Accepted) {
                     auto chosen = dlg.selectedPassenger();
                     sendCreateOrder(m_pendingBookFlightId, chosen.name, chosen.idCard);
@@ -215,6 +259,8 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
             return;
         }
 
+        if (msg.contains("订单创建失败"))
+            QMessageBox::warning(this, "下单失败", msg);
         return;
     }
 
@@ -319,13 +365,17 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
             row << new QStandardItem(f.toCity);
             row << new QStandardItem(f.departTime.toString("yyyy-MM-dd HH:mm"));
             row << new QStandardItem(f.arriveTime.toString("yyyy-MM-dd HH:mm"));
-
             double priceYuan = f.priceCents / 100.0;
             row << new QStandardItem(QString("￥%1").arg(QString::number(priceYuan, 'f', 2)));
+            row << new QStandardItem(QString::number(f.seatLeft));
 
             model->appendRow(row);
         }
-        ui->tableView->setColumnHidden(0, true);
+
+        QTimer::singleShot(0, ui->tableView, [=]{
+            resizeTableView(ui->tableView);
+        });
+
     }
     // 处理订票结果
     else if (type == Protocol::TYPE_ORDER_CREATE_RESP) {
@@ -384,7 +434,7 @@ void FlightsPage::onJsonReceived(const QJsonObject &obj)
         const qint64 flightId = m_pendingBookFlightId;
         Common::FlightInfo flt = m_flightCache.value(flightId);
 
-        auto dlg = new PassengerPickDialog(self, others, flt, this);
+        auto dlg = new PassengerPickDialog(self, others, flt, m_profilePage ,this);
         dlg->setAttribute(Qt::WA_DeleteOnClose);
 
         connect(dlg, &QDialog::accepted, this, [this, dlg, flightId](){

@@ -4,6 +4,7 @@
 #include <QDialog>
 #include "Common/Models.h"
 #include <QStandardItemModel>
+#include "../ProfilePage/ProfilePage.h"
 
 namespace Ui {
 class PassengerPickDialog;
@@ -17,6 +18,7 @@ public:
     explicit PassengerPickDialog(const Common::PassengerInfo& self,
                                  const QList<Common::PassengerInfo>& others,
                                  const Common::FlightInfo& flight,
+                                 ProfilePage* profilePage,
                                  QWidget *parent = nullptr);
     ~PassengerPickDialog();
 
@@ -48,6 +50,8 @@ private:
 
     QMetaObject::Connection m_getConn;
     QMetaObject::Connection m_addConn;
+
+    ProfilePage* m_profilePage;
 };
 
 #endif // PASSENGERPICKDIALOG_H

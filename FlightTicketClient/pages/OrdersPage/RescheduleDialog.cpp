@@ -22,11 +22,12 @@ RescheduleDialog::RescheduleDialog(QWidget *parent)
     setModal(true);
 
     m_model = new QStandardItemModel(this);
-    m_model->setHorizontalHeaderLabels({"航班ID","航班号","出发","到达","起飞","到达","票价(元)","余票"});
+    m_model->setHorizontalHeaderLabels({"航班ID","航班号","出发地","目的地","起飞时间","到达时间","票价","余票"});
     ui->tableFlights->setModel(m_model);
     ui->tableFlights->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableFlights->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableFlights->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableFlights->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     connect(ui->btnClose, &QPushButton::clicked, this, &RescheduleDialog::reject);
 }
@@ -46,8 +47,10 @@ void RescheduleDialog::setData(const Common::OrderInfo &oriOrder,
         .arg(oriFlight.fromCity.isEmpty() ? "--" : oriFlight.fromCity)
         .arg(oriFlight.toCity.isEmpty() ? "--" : oriFlight.toCity));
 
-    if (oriFlight.departTime.isValid())
-        ui->deDepartDate->setDate(oriFlight.departTime.date());
+    if (oriFlight.departTime.isValid()){
+        ui->deMinDate->setDate(oriFlight.departTime.date());
+        ui->deMaxDate->setDate(oriFlight.departTime.date());
+    }
 }
 
 void RescheduleDialog::on_btnSearch_clicked()
@@ -79,8 +82,8 @@ void RescheduleDialog::sendFlightSearch()
     data["toCity"]   = m_oriFlight.toCity;
 
     QJsonObject dateObj;
-    dateObj["minDepartDate"] = ui->deDepartDate->date().toString("yyyy-MM-dd");
-    dateObj["maxDepartDate"] = ui->deDepartDate->date().toString("yyyy-MM-dd");
+    dateObj["minDepartDate"] = ui->deMinDate->date().toString("yyyy-MM-dd");
+    dateObj["maxDepartDate"] = ui->deMaxDate->date().toString("yyyy-MM-dd");
     data["date"] = dateObj;
 
     QJsonObject req;
