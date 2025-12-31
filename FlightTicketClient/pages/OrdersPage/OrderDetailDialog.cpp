@@ -12,6 +12,38 @@ static QString centsToYuanText(qint32 cents)
     return QString::number(cents / 100.0, 'f', 2);
 }
 
+QString OrderDetailDialog::maskMiddle(const QString& s, int left, int right, QChar ch)
+{
+    if (s.isEmpty()) return "";
+    if (left + right >= s.size()) return QString(s.size(), ch);
+
+    QString out = s.left(left);
+    out += QString(s.size() - left - right, ch);
+    out += s.right(right);
+    return out;
+}
+
+void OrderDetailDialog::applyPassengerPrivacyMask()
+{
+    const QString name = m_ord.passengerName;
+    const QString id   = m_ord.passengerIdCard;
+
+    const bool show = ui->cbShowPassengerPrivacy->isChecked();
+
+    // 姓名：显示最后一个字，其余*
+    const QString showName = show
+                                 ? name
+                                 : (name.isEmpty() ? "" : maskMiddle(name, 0, 1));
+
+    // 身份证：显示前4后4
+    const QString showId = show
+                               ? id
+                               : maskMiddle(id, 4, 4);
+
+    ui->lblPassengerName->setText(name.isEmpty() ? "--" : showName);
+    ui->lblPassengerIdCard->setText(id.isEmpty() ? "--" : showId);
+}
+
 OrderDetailDialog::OrderDetailDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::OrderDetailDialog)
@@ -103,8 +135,7 @@ void OrderDetailDialog::setData(const Common::OrderInfo &ord,
     refreshPriceLabel();
 
     // 乘机人信息
-    ui->lblPassengerName->setText(ord.passengerName.isEmpty() ? "--" : ord.passengerName);
-    ui->lblPassengerIdCard->setText(ord.passengerIdCard.isEmpty() ? "--" : ord.passengerIdCard);
+    applyPassengerPrivacyMask();
     ui->lblSeatNum->setText(ord.seatNum.isEmpty() ? "未分配" : ord.seatNum);
 
     // 航班信息
@@ -385,3 +416,9 @@ void OrderDetailDialog::refreshRescheduleButton()
     ui->btnReschedule->setEnabled(enable);
     ui->btnReschedule->setText(text);
 }
+
+void OrderDetailDialog::on_cbShowPassengerPrivacy_toggled(bool)
+{
+    applyPassengerPrivacyMask();
+}
+
