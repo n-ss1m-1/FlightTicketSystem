@@ -58,17 +58,16 @@ public:
     DBResult getUserById(qint64 userId,Common::UserInfo& user,QString* errMsg=nullptr);
     DBResult getUserByPhone(const QString& phone, Common::UserInfo& existUser, QString* errMsg=nullptr);
     DBResult getUserByIdCard(const QString& id_card, Common::UserInfo& existUser, QString* errMsg=nullptr);
-    DBResult addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg);
-    DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg);
-    DBResult updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg);
+    DBResult addUser(const QString& username,const QString& password,const QString& phone,const QString& real_name,const QString& id_card,QString* errMsg=nullptr);
+    DBResult updatePasswdByUsername(const QString& username,const QString& newPasswd,QString* errMsg=nullptr);
+    DBResult updatePhoneByUsername(const QString& username,const QString& phone,QString* errMsg=nullptr);
     //常用乘机人
-    DBResult addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
-    DBResult delPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg);
-    DBResult getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg);
+    DBResult addPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg=nullptr);
+    DBResult delPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,QString* errMsg=nullptr);
+    DBResult getPassengers(const qint64 user_id,QList<Common::PassengerInfo>& passengers,QString* errMsg=nullptr);
+    DBResult getPassenger(const qint64 user_id,const QString& passenger_name,const QString& passenger_id_card,Common::PassengerInfo& existPassenger,QString* errMsg=nullptr);
     //航班                    //flights作为传出参数
-    // DBResult searchFlights(const QString& fromCity,const QString& toCity,const QDate& date,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
     DBResult searchFlights(const Common::FlightQueryCondition& cond,QList<Common::FlightInfo>& flights, QString* errMsg=nullptr);
-    // DBResult getFlightById(qint64 flightId,Common::FlightInfo& flight,QString* errMsg=nullptr);
 
     //城市列表
     DBResult getCityList(QList<QString>& fromCities,QList<QString>& toCities,QString* errMsg=nullptr);

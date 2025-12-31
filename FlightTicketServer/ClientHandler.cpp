@@ -138,6 +138,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         Common::UserInfo existUser;
         if (db.getUserByUsername(username, existUser) == DBResult::Success)
         {
+            qInfo()<<"注册失败：用户名已存在";
             QJsonObject respData;
             respData.insert("user",Common::userToJson(existUser));
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：用户名已存在",respData));
@@ -145,6 +146,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         }
         if (db.getUserByPhone(phone, existUser, &errMsg) == DBResult::Success)
         {
+            qInfo()<<"注册失败：该手机号已被注册，请更换手机号或直接登录";
             QJsonObject respData;
             respData.insert("user",Common::userToJson(existUser));
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该手机号已被注册，请更换手机号或直接登录",respData));
@@ -159,6 +161,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
 
         if (db.getUserByIdCard(idCard, existUser, &errMsg) == DBResult::Success)
         {
+            qInfo()<<"注册失败：该身份证号已关联其他账号，请确认信息后重试";
             QJsonObject respData;
             respData.insert("user",Common::userToJson(existUser));
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "注册失败：该身份证号已关联其他账号，请确认信息后重试",respData));
@@ -295,7 +298,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR,"常用乘机人查询失败:"+errMsg));
         }
     }
-    //添加常用乘机人 需要传入添加的乘机人的姓名和身份证号
+    //添加常用乘机人 重复性检查 需要传入添加的乘机人的姓名和身份证号
     else if(type == Protocol::TYPE_PASSENGER_ADD)
     {
         //检查用户是否真正登陆 避免非法JSON构造
@@ -318,13 +321,24 @@ void ClientHandler::handleJson(const QJsonObject &obj)
             return;
         }
 
-        // static const QRegularExpression idCardReg("^[1-9]\\d{5}(18|19|20)\\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\\d|3[01])\\d{3}[0-9X]$");
-        // if (!idCardReg.match(passenger_id_card).hasMatch()) {
-        //     sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "身份证号格式无效"));
-        //     return;
-        // }
-
         qInfo()<<"Add Passenger request: user:"<<user.username<<" to add passenger:"<<passenger_name<<"("<<passenger_id_card<<")";
+
+        // 检查常用乘机人是否已存在于该用户账号
+        Common::PassengerInfo existPassenger;
+        if (db.getPassenger(user.id,passenger_name,passenger_id_card,existPassenger,&errMsg) == DBResult::Success)
+        {
+            qInfo()<<"添加常用乘机人失败：该常用乘机人已存在";
+            QJsonObject respData;
+            respData.insert("passenger",Common::passengerToJson(existPassenger));
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "添加常用乘机人失败：该常用乘机人已存在",respData));
+            return;
+        }
+        if (!errMsg.isEmpty())
+        {
+            qCritical() << "Check passenger exist DB Error:" << errMsg;
+            sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "添加常用乘机人失败：查询常用乘机人状态异常"));
+            return;
+        }
 
         DBResult res=db.addPassenger(user.id,passenger_name,passenger_id_card,&errMsg);
         if(res == DBResult::Success)
@@ -512,6 +526,7 @@ void ClientHandler::handleJson(const QJsonObject &obj)
         Common::OrderInfo existOrder;
         if (db.getOrderByFlightId(order.flightId,order.passengerName,order.passengerIdCard,existOrder, &errMsg) == DBResult::Success)
         {
+            qInfo()<<"订单创建失败: 该乘客已经预定该航班";
             QJsonObject respData;
             respData.insert("order",Common::orderToJson(existOrder));
             sendJson(Protocol::makeFailResponse(Protocol::TYPE_ERROR, "订单创建失败: 该乘客已经预定该航班",respData));
