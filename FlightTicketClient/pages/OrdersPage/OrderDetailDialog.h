@@ -32,6 +32,8 @@ private slots:
     void on_btnCancel_clicked();
     void on_btnReschedule_clicked();
 
+    void on_cbShowPassengerPrivacy_toggled(bool checked);
+
 private:
     Ui::OrderDetailDialog *ui;
 
@@ -53,6 +55,9 @@ private:
     void refreshPriceLabel();
 
     void refreshRescheduleButton();
+
+    static QString maskMiddle(const QString& s, int left, int right, QChar ch = '*');
+    void applyPassengerPrivacyMask();
 };
 
 #endif // ORDERDETAILDIALOG_H

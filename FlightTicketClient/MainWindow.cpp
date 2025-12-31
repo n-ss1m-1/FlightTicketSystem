@@ -28,6 +28,7 @@ MainWindow::MainWindow(QWidget *parent)
     ordersPage = new OrdersPage(this);
     profilePage = new ProfilePage(this);
     homePage->m_profilePage = profilePage;
+    flightsPage->m_profilePage = profilePage;
 
     // 绑定到容器
     bindPage(ui->tabHome, homePage);

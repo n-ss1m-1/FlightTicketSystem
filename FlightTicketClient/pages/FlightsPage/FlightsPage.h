@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QHash>
 #include "Common/Models.h"
+#include "../ProfilePage/ProfilePage.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class FlightsPage; }
@@ -18,6 +19,8 @@ class FlightsPage : public QWidget
 public:
     explicit FlightsPage(QWidget *parent = nullptr);
     ~FlightsPage();
+
+    ProfilePage* m_profilePage;
 
 signals:
     void requestGoOrders(qint64 orderId); // 支付完成后跳转到订单页

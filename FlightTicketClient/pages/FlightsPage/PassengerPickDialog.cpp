@@ -8,11 +8,13 @@
 PassengerPickDialog::PassengerPickDialog(const Common::PassengerInfo& self,
                                          const QList<Common::PassengerInfo>& others,
                                          const Common::FlightInfo& flight,
+                                         ProfilePage* profilePage,
                                          QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::PassengerPickDialog)
     , m_flight(flight)
     , m_self(self)
+    , m_profilePage(profilePage)
 {
     ui->setupUi(this);
     setWindowTitle("选择乘机人");
@@ -175,6 +177,8 @@ void PassengerPickDialog::on_btnAddPassenger_clicked()
                         if (ok) {
                             // 添加成功后从服务器重新拉取列表（拿到新 passenger.id）
                             requestPassengers();
+                            // 刷新个人界面
+                            m_profilePage->requestPassengers();
                         }
                         return;
                     }
@@ -202,7 +206,7 @@ void PassengerPickDialog::requestPassengers()
         {
             QJsonDocument doc(obj);
             qDebug() << "==== [服务器返回的原始数据] ====";
-            qDebug() << doc.toJson(QJsonDocument::Indented);
+            qDebug() << doc.toJson(QJsonDocument::Compact);
             qDebug() << "================================";
 
             const QString type = obj.value(Protocol::KEY_TYPE).toString();

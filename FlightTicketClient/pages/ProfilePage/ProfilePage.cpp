@@ -8,6 +8,7 @@
 #include "ChangePwdDialog.h"
 #include "ChangePhoneDialog.h"
 #include "SettingsManager.h"
+#include "AddPassengerDialog.h"
 #include <QLineEdit>
 #include <QInputDialog>
 #include <QSharedPointer>
@@ -456,9 +457,12 @@ void ProfilePage::requestPassengers()
                     return;
                 }
 
-                QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+                const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
 
-                if (!msg.contains("暂无")) {
+                if (msg.contains("暂无")) {
+                    m_passengers.clear();
+                    fillPassengerTable(m_passengers);
+                } else {
                     QMessageBox::critical(this, "错误", msg);
                 }
 
@@ -501,27 +505,32 @@ void ProfilePage::fillPassengerTable(const QList<Common::PassengerInfo>& list)
 
     for (int i = 0; i < list.size(); ++i) {
         const auto &p = list[i];
-        QString name;
-        QString idCard;
-        if(ui->cbShowPassengers->isChecked()){
-            name = p.name;
-            idCard = p.idCard;
-        }
-        else{
-            name = maskMiddle(p.name, 0, 1);
-            idCard = maskMiddle(p.idCard, 4, 4);
-        }
-        t->setItem(i, 0, new QTableWidgetItem(QString::number(p.id)));
-        t->setItem(i, 1, new QTableWidgetItem(name));
-        t->setItem(i, 2, new QTableWidgetItem(idCard));
+
+        const QString displayName  = ui->cbShowPassengers->isChecked()
+                                        ? p.name
+                                        : maskMiddle(p.name, 0, 1);
+
+        const QString displayIdCard = ui->cbShowPassengers->isChecked()
+                                          ? p.idCard
+                                          : maskMiddle(p.idCard, 4, 4);
+
+        auto *idItem = new QTableWidgetItem(QString::number(p.id));
+
+        auto *nameItem = new QTableWidgetItem(displayName);
+        nameItem->setData(Qt::UserRole, p.name); // 存真实姓名
+
+        auto *idCardItem = new QTableWidgetItem(displayIdCard);
+        idCardItem->setData(Qt::UserRole, p.idCard); // 存真实身份证
+
+        t->setItem(i, 0, idItem);
+        t->setItem(i, 1, nameItem);
+        t->setItem(i, 2, idCardItem);
     }
 
-    if (list.isEmpty()) {
-        t->clearSelection();
-    } else {
-        t->selectRow(0);
-    }
+    if (list.isEmpty()) t->clearSelection();
+    else t->selectRow(0);
 }
+
 
 bool ProfilePage::validatePassengerInput(const QString& name, const QString& idCard, QString* err) const
 {
@@ -552,63 +561,63 @@ bool ProfilePage::validatePassengerInput(const QString& name, const QString& idC
 
 void ProfilePage::on_btnAddPassenger_clicked()
 {
-    if (!NetworkManager::instance()->isLoggedIn()) {
-        QMessageBox::warning(this, "提示", "请先登录");
-        return;
-    }
+    AddPassengerDialog dlg(this);
 
-    QString name = QInputDialog::getText(this, "添加乘机人", "姓名：");
-    if (name.isNull()) return;
+    connect(&dlg, &AddPassengerDialog::passengerSubmitted, this,
+        [this](const QString& name, const QString& idCard)
+        {
+            auto nm = NetworkManager::instance();
+            if (!nm->isConnected() || !nm->isLoggedIn()) return;
 
-    QString idCard = QInputDialog::getText(this, "添加乘机人", "身份证号：");
-    if (idCard.isNull()) return;
+            QString err;
+            const QString n = name.trimmed();
+            const QString id = idCard.trimmed().toUpper();
 
-    QString err;
-    if (!validatePassengerInput(name, idCard, &err)) {
-        QMessageBox::warning(this, "输入不合法", err);
-        return;
-    }
-
-    auto *nm = NetworkManager::instance();
-    if (m_passengerConn) QObject::disconnect(m_passengerConn);
-
-    m_passengerConn = connect(nm, &NetworkManager::jsonReceived, this,
-        [this, nm](const QJsonObject &obj) {
-            const QString type = obj.value(Protocol::KEY_TYPE).toString();
-
-            if (type == Protocol::TYPE_ERROR) {
-                if (!nm->isConnected() || !nm->isLoggedIn()) {
-                    QObject::disconnect(m_passengerConn);
-                    m_passengerConn = {};
-                    return;
-                }
-                QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
-                QObject::disconnect(m_passengerConn);
-                m_passengerConn = {};
+            if (!validatePassengerInput(n, id, &err)) {
+                QMessageBox::warning(this, "输入无效", err);
                 return;
             }
-            if (type != Protocol::TYPE_PASSENGER_ADD_RESP) return;
 
-            const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
-            const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+            QJsonObject data;
+            data.insert("passenger_name", n);
+            data.insert("passenger_id_card", id);
 
-            if (!ok) QMessageBox::warning(this, "添加失败", msg);
-            else QMessageBox::information(this, "添加成功", msg);
+            QJsonObject req;
+            req.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_ADD);
+            req.insert(Protocol::KEY_DATA, data);
 
-            QObject::disconnect(m_passengerConn);
-            m_passengerConn = {};
+            QMetaObject::Connection *conn = new QMetaObject::Connection;
+            *conn = connect(nm, &NetworkManager::jsonReceived, this,
+                [this, conn](const QJsonObject &obj)
+                {
+                    const QString type = obj.value(Protocol::KEY_TYPE).toString();
 
-            if (ok) requestPassengers();
+                    if (type == Protocol::TYPE_ERROR) {
+                        QMessageBox::critical(this, "错误", obj.value(Protocol::KEY_MESSAGE).toString());
+                        QObject::disconnect(*conn);
+                        delete conn;
+                        return;
+                    }
+
+                    if (type == Protocol::TYPE_PASSENGER_ADD_RESP) {
+                        const bool ok = obj.value(Protocol::KEY_SUCCESS).toBool();
+                        const QString msg = obj.value(Protocol::KEY_MESSAGE).toString();
+
+                        if (!ok) QMessageBox::critical(this, "添加失败", msg);
+                        else     QMessageBox::information(this, "添加成功", msg);
+
+                        requestPassengers();
+
+                        QObject::disconnect(*conn);
+                        delete conn;
+                        return;
+                    }
+                });
+
+            nm->sendJson(req);
         });
 
-    QJsonObject data;
-    data.insert("passenger_name", name.trimmed());
-    data.insert("passenger_id_card", idCard.trimmed());
-
-    QJsonObject req;
-    req.insert(Protocol::KEY_TYPE, Protocol::TYPE_PASSENGER_ADD);
-    req.insert(Protocol::KEY_DATA, data);
-    nm->sendJson(req);
+    dlg.exec();
 }
 
 int ProfilePage::currentPassengerRow() const
@@ -625,9 +634,18 @@ Common::PassengerInfo ProfilePage::passengerAtRow(int row) const
     auto *t = ui->tablePassengers;
     if (row < 0 || row >= t->rowCount()) return p;
 
-    p.id = t->item(row, 0) ? t->item(row, 0)->text().toLongLong() : 0;
-    p.name = t->item(row, 1) ? t->item(row, 1)->text() : "";
-    p.idCard = t->item(row, 2) ? t->item(row, 2)->text() : "";
+    if (auto *it0 = t->item(row, 0)) p.id = it0->text().toLongLong();
+
+    if (auto *it1 = t->item(row, 1)) {
+        const QString raw = it1->data(Qt::UserRole).toString();
+        p.name = raw.isEmpty() ? it1->text() : raw;
+    }
+
+    if (auto *it2 = t->item(row, 2)) {
+        const QString raw = it2->data(Qt::UserRole).toString();
+        p.idCard = raw.isEmpty() ? it2->text() : raw;
+    }
+
     return p;
 }
 
@@ -646,8 +664,11 @@ void ProfilePage::on_btnDelPassenger_clicked()
 
     const auto p = passengerAtRow(row);
 
+    const QString showName  = ui->tablePassengers->item(row, 1)->text();
+    const QString showId    = ui->tablePassengers->item(row, 2)->text();
+
     if (QMessageBox::question(this, "确认删除",
-                              QString("确定删除乘机人：%1（%2）？").arg(p.name, p.idCard))
+                              QString("确定删除乘机人：%1（%2）？").arg(showName, showId))
         != QMessageBox::Yes)
     {
         return;

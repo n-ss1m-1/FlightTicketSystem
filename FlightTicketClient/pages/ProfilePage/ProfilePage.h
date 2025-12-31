@@ -19,6 +19,8 @@ public:
     explicit ProfilePage(QWidget *parent = nullptr);
     ~ProfilePage();
 
+    void requestPassengers(); // 拉取列表
+
 private slots:
     void on_btnLogin_clicked();
 
@@ -58,7 +60,6 @@ private:
     QMetaObject::Connection m_passengerConn; // 临时连接
 
     void initPassengerTable();
-    void requestPassengers();                      // 拉取列表
     void fillPassengerTable(const QList<Common::PassengerInfo>& list);
 
     int currentPassengerRow() const;

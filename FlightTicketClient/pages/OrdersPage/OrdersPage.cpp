@@ -10,6 +10,8 @@
 #include <QShowEvent>
 #include <algorithm>
 #include "OrderDetailDialog.h"
+#include <QScrollBar>
+#include <QTimer>
 
 static const int ROLE_ORDER_ID = Qt::UserRole + 1;
 
@@ -31,6 +33,43 @@ static QString dtToText(const QDateTime &dt)
     return dt.toString("yyyy-MM-dd HH:mm");
 }
 
+// 平均分配空余空间
+static void resizeTableView(QTableView *tv)
+{
+    if (!tv || !tv->model()) return;
+
+    auto *h = tv->horizontalHeader();
+
+    h->setSectionResizeMode(QHeaderView::Interactive);
+    tv->resizeColumnsToContents();
+
+    QVector<int> cols;
+    int total = 0;
+    const int colCount = tv->model()->columnCount();
+    for (int c = 0; c < colCount; ++c) {
+        if (tv->isColumnHidden(c)) continue;
+        cols.push_back(c);
+        total += tv->columnWidth(c);
+    }
+    if (cols.isEmpty()) return;
+
+    int available = tv->viewport()->width();
+    if (tv->verticalScrollBar() && tv->verticalScrollBar()->isVisible())
+        available -= tv->verticalScrollBar()->width();
+
+    int extra = available - total;
+    if (extra <= 0) return;
+
+    int per = extra / cols.size();
+    int rem = extra % cols.size();
+
+    for (int i = 0; i < cols.size(); ++i) {
+        int c = cols[i];
+        int add = per + (i < rem ? 1 : 0);
+        tv->setColumnWidth(c, tv->columnWidth(c) + add);
+    }
+}
+
 OrdersPage::OrdersPage(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::OrdersPage)
@@ -40,13 +79,15 @@ OrdersPage::OrdersPage(QWidget *parent) :
     // 初始化模型
     model = new QStandardItemModel(this);
     model->setHorizontalHeaderLabels({
-        "订单来源", "航班号", "航线", "起飞时间", "到达时间",
-        "乘机人", "座位号", "金额", "状态"
+        "订单来源", "状态", "航班号", "航线", "起飞时间", "到达时间",
+        "乘机人", "座位号", "金额"
     });
     ui->tableOrders->setModel(model);
     ui->tableOrders->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableOrders->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableOrders->horizontalHeader()->setStretchLastSection(true);
+    ui->tableOrders->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    ui->tableOrders->horizontalHeader()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 
     // 双击行弹出详细信息
     connect(ui->tableOrders, &QTableView::doubleClicked,
@@ -156,6 +197,7 @@ void OrdersPage::rebuildTableFromCache()
         itSource->setData(orderIdVariant(ord.id), ROLE_ORDER_ID); // orderId 不显示，但绑定到第一列 item
 
         rowItems << itSource;
+        rowItems << new QStandardItem(statusText);
         rowItems << new QStandardItem(flightNo);
         rowItems << new QStandardItem(route);
         rowItems << new QStandardItem(departText);
@@ -163,10 +205,13 @@ void OrdersPage::rebuildTableFromCache()
         rowItems << new QStandardItem(passengerText);
         rowItems << new QStandardItem(seatText);
         rowItems << new QStandardItem(priceText);
-        rowItems << new QStandardItem(statusText);
 
         model->appendRow(rowItems);
     }
+
+    QTimer::singleShot(0, ui->tableOrders, [=]{
+        resizeTableView(ui->tableOrders);
+    });
 }
 
 QVariant OrdersPage::orderIdVariant(qint64 id) const
@@ -219,7 +264,7 @@ void OrdersPage::onJsonReceived(const QJsonObject &obj)
 {
     QJsonDocument doc(obj);
     qDebug() << "==== [服务器返回的原始数据] ====";
-    qDebug() << doc.toJson(QJsonDocument::Indented);
+    qDebug() << doc.toJson(QJsonDocument::Compact);
     qDebug() << "================================";
 
     const QString type = obj.value(Protocol::KEY_TYPE).toString();
